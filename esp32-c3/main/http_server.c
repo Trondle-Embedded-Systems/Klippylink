@@ -222,24 +222,25 @@ static esp_err_t handle_wifi_config(httpd_req_t *req)
     return ret;
 }
 
-/* ── WebSocket /ws/events ───────────────────────────────────────────────── */
+/* ── WebSocket /ws/events (requires CONFIG_HTTPD_WS_SUPPORT=y) ───────────── */
+#ifdef CONFIG_HTTPD_WS_SUPPORT
 static esp_err_t handle_ws(httpd_req_t *req)
 {
     if (req->method == HTTP_GET) {
-        /* New WS handshake */
         if (s_ws_count < MAX_WS_CLIENTS) {
             s_ws_fds[s_ws_count++] = httpd_req_to_sockfd(req);
             ESP_LOGI(TAG, "WS client connected (total %d)", s_ws_count);
         }
         return ESP_OK;
     }
-    /* Receive frame (ignore, we only push) */
     httpd_ws_frame_t frame = {.type = HTTPD_WS_TYPE_TEXT};
     return httpd_ws_recv_frame(req, &frame, 0);
 }
+#endif /* CONFIG_HTTPD_WS_SUPPORT */
 
 void http_server_broadcast(const char *json)
 {
+#ifdef CONFIG_HTTPD_WS_SUPPORT
     if (!s_server || s_ws_count == 0) return;
     httpd_ws_frame_t frame = {
         .type    = HTTPD_WS_TYPE_TEXT,
@@ -249,21 +250,22 @@ void http_server_broadcast(const char *json)
     for (int i = s_ws_count - 1; i >= 0; i--) {
         esp_err_t ret = httpd_ws_send_frame_async(s_server, s_ws_fds[i], &frame);
         if (ret != ESP_OK) {
-            /* Client gone — remove */
             s_ws_count--;
             s_ws_fds[i] = s_ws_fds[s_ws_count];
         }
     }
+#else
+    (void)json;
+#endif
 }
 
-/* ── URI table ──────────────────────────────────────────────────────────── */
+/* ── URI table (REST only — WS registered separately below) ─────────────── */
 static const httpd_uri_t s_uris[] = {
-    {"/api/info",              HTTP_GET,  handle_info,         NULL},
-    {"/api/nodes",             HTTP_GET,  handle_nodes,        NULL},
-    {"/api/nodes/*",           HTTP_GET,  handle_endstops,     NULL},
-    {"/api/nodes/*",           HTTP_POST, handle_neopixel_set, NULL},
-    {"/api/wifi",              HTTP_POST, handle_wifi_config,  NULL},
-    {"/ws/events",             HTTP_GET,  handle_ws,           NULL, .is_websocket = true},
+    {.uri = "/api/info",     .method = HTTP_GET,  .handler = handle_info,         .user_ctx = NULL},
+    {.uri = "/api/nodes",    .method = HTTP_GET,  .handler = handle_nodes,        .user_ctx = NULL},
+    {.uri = "/api/nodes/*",  .method = HTTP_GET,  .handler = handle_endstops,     .user_ctx = NULL},
+    {.uri = "/api/nodes/*",  .method = HTTP_POST, .handler = handle_neopixel_set, .user_ctx = NULL},
+    {.uri = "/api/wifi",     .method = HTTP_POST, .handler = handle_wifi_config,  .user_ctx = NULL},
 };
 
 esp_err_t http_server_start(void)
@@ -281,6 +283,18 @@ esp_err_t http_server_start(void)
 
     for (int i = 0; i < (int)(sizeof(s_uris)/sizeof(s_uris[0])); i++)
         httpd_register_uri_handler(s_server, &s_uris[i]);
+
+#ifdef CONFIG_HTTPD_WS_SUPPORT
+    static const httpd_uri_t ws_uri = {
+        .uri          = "/ws/events",
+        .method       = HTTP_GET,
+        .handler      = handle_ws,
+        .user_ctx     = NULL,
+        .is_websocket = true,
+    };
+    httpd_register_uri_handler(s_server, &ws_uri);
+    ESP_LOGI(TAG, "WebSocket events on ws://…:%d/ws/events", SERVER_PORT);
+#endif
 
     ESP_LOGI(TAG, "HTTP server started on port %d", SERVER_PORT);
     return ESP_OK;
