@@ -2,175 +2,202 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>KlippyLink Flasher</title>
-  <script
-    type="module"
-    src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"
-  ></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>KlippyLink Installer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet" />
+  <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
   <style>
-    :root {
-      --accent: #00b3b3;
-      --bg: #1a1a2e;
-      --surface: #16213e;
-      --text: #e0e0e0;
-      --text-muted: #888;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: system-ui, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 2rem 1rem;
-    }
-    header { text-align: center; margin-bottom: 2.5rem; }
-    header h1 { font-size: 2rem; color: var(--accent); letter-spacing: 1px; }
-    header p  { color: var(--text-muted); margin-top: 0.4rem; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    .cards {
-      display: flex;
-      gap: 1.5rem;
-      flex-wrap: wrap;
-      justify-content: center;
-      width: 100%;
-      max-width: 860px;
+    body {
+      font-family: Roboto, sans-serif;
+      background: #f5f5f5;
+      color: #212121;
+      min-height: 100vh;
     }
-    .card {
-      background: var(--surface);
-      border-radius: 12px;
-      padding: 1.8rem;
-      flex: 1 1 320px;
+
+    /* ── App bar ── */
+    header {
+      background: #fff;
+      box-shadow: 0 2px 4px rgba(0,0,0,.14);
+      padding: 0 24px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    header svg { flex-shrink: 0; }
+    header h1 {
+      font-size: 20px;
+      font-weight: 500;
+      letter-spacing: .15px;
+      color: #212121;
+    }
+
+    /* ── Page body ── */
+    main {
+      max-width: 600px;
+      margin: 32px auto;
+      padding: 0 16px;
       display: flex;
       flex-direction: column;
-      gap: 1rem;
+      gap: 16px;
     }
-    .card h2 { font-size: 1.2rem; color: var(--accent); }
-    .card p  { color: var(--text-muted); font-size: 0.9rem; line-height: 1.5; }
-    .badge {
+
+    /* ── Card ── */
+    .card {
+      background: #fff;
+      border-radius: 4px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.24);
+      overflow: hidden;
+    }
+    .card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px 16px;
+    }
+    .card-title {
+      font-size: 16px;
+      font-weight: 500;
+    }
+    .chip-label {
       display: inline-block;
-      background: rgba(0,179,179,0.15);
-      color: var(--accent);
-      font-size: 0.75rem;
-      padding: 2px 8px;
-      border-radius: 99px;
-      border: 1px solid rgba(0,179,179,0.4);
+      margin-top: 4px;
+      font-size: 12px;
+      color: #757575;
+      background: #f5f5f5;
+      border: 1px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 1px 8px;
+    }
+
+    /* install button wrapper */
+    .install-wrap {
+      flex-shrink: 0;
     }
     esp-web-install-button {
-      --esp-tools-button-color: var(--accent);
-      --esp-tools-button-text-color: #000;
-      margin-top: auto;
+      --esp-tools-button-color: #03a9f4;
+      --esp-tools-button-text-color: #fff;
     }
-    .steps {
-      width: 100%;
-      max-width: 860px;
-      margin-top: 2.5rem;
-    }
-    .steps h2 { color: var(--accent); margin-bottom: 1rem; }
-    ol { padding-left: 1.4rem; }
-    ol li { margin-bottom: 0.7rem; color: var(--text-muted); line-height: 1.5; }
-    ol li b { color: var(--text); }
-    code {
-      background: rgba(255,255,255,0.07);
-      padding: 1px 5px;
+    esp-web-install-button [slot="activate"] {
+      background: #03a9f4;
+      color: #fff;
+      border: none;
       border-radius: 4px;
-      font-family: monospace;
+      padding: 0 16px;
+      height: 36px;
+      font: 500 14px/36px Roboto, sans-serif;
+      letter-spacing: 1.25px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background .15s;
     }
+    esp-web-install-button [slot="activate"]:hover { background: #0288d1; }
+
+    /* ── Steps ── */
+    .steps {
+      padding: 0 24px 20px;
+      border-top: 1px solid #f0f0f0;
+    }
+    .steps ol {
+      margin-top: 12px;
+      padding-left: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .steps li {
+      font-size: 13px;
+      color: #616161;
+      line-height: 1.5;
+    }
+    .steps li b { color: #212121; font-weight: 500; }
+    .steps code {
+      font-family: "Roboto Mono", monospace;
+      font-size: 12px;
+      background: #f5f5f5;
+      padding: 1px 4px;
+      border-radius: 3px;
+    }
+
+    /* ── Footer ── */
     footer {
-      margin-top: 3rem;
-      color: var(--text-muted);
-      font-size: 0.8rem;
       text-align: center;
+      padding: 24px 0 32px;
+      font-size: 12px;
+      color: #9e9e9e;
     }
-    footer a { color: var(--accent); text-decoration: none; }
+    footer a { color: #03a9f4; text-decoration: none; }
   </style>
 </head>
 <body>
 
-  <header>
-    <h1>KlippyLink Flasher</h1>
-    <p>Flash your ESP32 devices directly from the browser — no drivers required.</p>
-  </header>
+<header>
+  <!-- KlippyLink wordmark icon -->
+  <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="32" height="32" rx="6" fill="#03a9f4"/>
+    <path d="M8 22 L14 10 L20 18 L23 14 L26 22" stroke="#fff" stroke-width="2.2"
+          stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </svg>
+  <h1>KlippyLink Installer</h1>
+</header>
 
-  <div class="cards">
+<main>
 
-    <!-- Node card -->
-    <div class="card">
-      <span class="badge">ESP32-S3</span>
-      <h2>Node Firmware</h2>
-      <p>
-        Flash this to any <b>ESP32-S3</b> that will act as a peripheral node —
-        controlling NeoPixel LEDs, reading endstops, and reporting state to
-        the router over BLE.
-      </p>
-      <p>
-        After flashing, upload your <code>config.json</code> to the device
-        via the OTA config endpoint or copy it to the SPIFFS partition.
-      </p>
-      <esp-web-install-button manifest="manifest.json" data-chip="ESP32-S3">
-        <button slot="activate">Flash Node</button>
-      </esp-web-install-button>
+  <!-- ── Router card ── -->
+  <div class="card">
+    <div class="card-top">
+      <div class="card-info">
+        <div class="card-title">Router</div>
+        <span class="chip-label">ESP32-C3</span>
+      </div>
+      <div class="install-wrap">
+        <esp-web-install-button manifest="manifest.json" data-chip="ESP32-C3">
+          <button slot="activate">Install</button>
+        </esp-web-install-button>
+      </div>
     </div>
-
-    <!-- Router card -->
-    <div class="card">
-      <span class="badge">ESP32-C3</span>
-      <h2>Router Firmware</h2>
-      <p>
-        Flash this to the <b>ESP32-C3</b> that bridges BLE nodes to Klipper.
-        It scans for nodes, maintains connections, and exposes a REST + WebSocket
-        API on port <code>8765</code>.
-      </p>
-      <p>
-        After flashing, connect via USB serial and run
-        <code>klippylink-config.py --port /dev/ttyACM0 --ssid … --password …</code>
-        to set WiFi credentials.
-      </p>
-      <esp-web-install-button manifest="manifest.json" data-chip="ESP32-C3">
-        <button slot="activate">Flash Router</button>
-      </esp-web-install-button>
+    <div class="steps">
+      <ol>
+        <li>Plug the ESP32-C3 into USB, then click <b>Install</b>.</li>
+        <li>Set WiFi credentials once:<br/>
+          <code>POST http://&lt;router-ip&gt;:8765/api/wifi</code> <code>{"ssid":"…","password":"…"}</code>
+        </li>
+        <li>Run <code>bash klipper-extension/install.sh</code> on your Pi.</li>
+      </ol>
     </div>
-
   </div>
 
-  <!-- Step-by-step guide -->
-  <div class="steps">
-    <h2>First-time setup guide</h2>
-    <ol>
-      <li>
-        <b>Flash the router</b> (ESP32-C3) using the button above.
-        Plug it into your computer via USB before clicking.
-      </li>
-      <li>
-        <b>Configure WiFi</b> on the router — open a terminal and run:<br/>
-        <code>python3 klipper-extension/klippylink-config.py --port /dev/ttyACM0 --ssid "MyNet" --password "secret"</code>
-      </li>
-      <li>
-        <b>Flash each node</b> (ESP32-S3) using the "Flash Node" button.
-      </li>
-      <li>
-        <b>Upload a config</b> to each node — create a <code>config.json</code>
-        (see <code>configs/node_example.json</code>) and POST it to<br/>
-        <code>http://&lt;router-ip&gt;:8765/api/nodes/&lt;node&gt;/config</code>
-      </li>
-      <li>
-        <b>Install the Klipper extension</b> on your Pi:<br/>
-        <code>bash klipper-extension/install.sh</code>
-      </li>
-      <li>
-        Add the <code>[klippylink]</code> section to your <code>printer.cfg</code>
-        (see <code>klipper-extension/klippylink.cfg.example</code>) and restart Klipper.
-      </li>
-    </ol>
+  <!-- ── Node card ── -->
+  <div class="card">
+    <div class="card-top">
+      <div class="card-info">
+        <div class="card-title">Node</div>
+        <span class="chip-label">ESP32-S3</span>
+      </div>
+      <div class="install-wrap">
+        <esp-web-install-button manifest="manifest.json" data-chip="ESP32-S3">
+          <button slot="activate">Install</button>
+        </esp-web-install-button>
+      </div>
+    </div>
+    <div class="steps">
+      <ol>
+        <li>Plug the ESP32-S3 into USB, then click <b>Install</b>.</li>
+        <li>Upload <code>config.json</code> to the node's SPIFFS partition to define its LEDs and endstops.</li>
+        <li>The router discovers this node automatically over BLE.</li>
+      </ol>
+    </div>
   </div>
 
-  <footer>
-    KlippyLink &mdash; open-source Klipper extension nodes &bull;
-    <a href="https://github.com/your-org/klippylink" target="_blank">GitHub</a>
-  </footer>
+</main>
+
+<footer>
+  <a href="https://github.com/nicolastrondle/Klippylink" target="_blank">GitHub</a>
+  &nbsp;·&nbsp; KlippyLink
+</footer>
 
 </body>
 </html>

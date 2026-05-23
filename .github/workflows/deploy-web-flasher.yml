@@ -1,4 +1,4 @@
-name: Deploy Web Flasher to GitHub Pages
+name: Build Firmware & Deploy Web Flasher
 
 on:
   push:
@@ -15,20 +15,86 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # ── Build node firmware (ESP32-S3) ─────────────────────────────────────────
+  build-node:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build klippylink-node
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.3.2
+          target: esp32s3
+          path: esp32-s3
+
+      - name: Collect node binaries
+        run: |
+          mkdir -p _node
+          cp esp32-s3/build/bootloader/bootloader.bin          _node/node-bootloader.bin
+          cp esp32-s3/build/partition_table/partition-table.bin _node/node-partition-table.bin
+          cp esp32-s3/build/klippylink-node.bin                _node/klippylink-node.bin
+          # ota_data_initial.bin is only present when OTA partitions are configured
+          cp esp32-s3/build/ota_data_initial.bin               _node/node-ota_data_initial.bin 2>/dev/null || \
+            dd if=/dev/zero bs=8192 count=1 | tr '\000' '\377' > _node/node-ota_data_initial.bin
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: node-firmware
+          path: _node/
+
+  # ── Build router firmware (ESP32-C3) ───────────────────────────────────────
+  build-router:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build klippylink-router
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.3.2
+          target: esp32c3
+          path: esp32-c3
+
+      - name: Collect router binaries
+        run: |
+          mkdir -p _router
+          cp esp32-c3/build/bootloader/bootloader.bin            _router/router-bootloader.bin
+          cp esp32-c3/build/partition_table/partition-table.bin  _router/router-partition-table.bin
+          cp esp32-c3/build/klippylink-router.bin                _router/klippylink-router.bin
+          cp esp32-c3/build/ota_data_initial.bin                 _router/router-ota_data_initial.bin 2>/dev/null || \
+            dd if=/dev/zero bs=8192 count=1 | tr '\000' '\377' > _router/router-ota_data_initial.bin
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: router-firmware
+          path: _router/
+
+  # ── Deploy to GitHub Pages ─────────────────────────────────────────────────
   deploy:
+    needs: [build-node, build-router]
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
+      - name: Download node firmware
+        uses: actions/download-artifact@v4
+        with:
+          name: node-firmware
+          path: web-flasher/firmware/
 
-      - name: Upload web-flasher as Pages artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Download router firmware
+        uses: actions/download-artifact@v4
+        with:
+          name: router-firmware
+          path: web-flasher/firmware/
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
         with:
           path: web-flasher
 
