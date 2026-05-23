@@ -217,6 +217,9 @@ static void dispatch_packet(const klip_packet_t *pkt)
     }
 }
 
+/* Forward declaration so the disconnect handler can reference it */
+static esp_ble_adv_params_t s_adv_params;
+
 /* ── GATTS event handler ──────────────────────────────────────────────────── */
 static void gatts_event_handler(esp_gatts_cb_event_t event,
                                 esp_gatt_if_t gatts_if,
@@ -263,7 +266,7 @@ static void gatts_event_handler(esp_gatts_cb_event_t event,
         s_conn_id = 0xFFFF;
         s_notify_enabled = false;
         ESP_LOGI(TAG, "Central disconnected, restarting advertising");
-        esp_ble_gap_start_advertising(NULL);
+        esp_ble_gap_start_advertising(&s_adv_params);
         break;
 
     default:

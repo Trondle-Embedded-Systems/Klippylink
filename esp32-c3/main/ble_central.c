@@ -124,8 +124,6 @@ static void gattc_event_handler(esp_gattc_cb_event_t event,
         esp_gattc_char_elem_t *chars = NULL;
         esp_gatt_status_t st;
 
-        esp_bt_uuid_t svc_uuid = {.len = ESP_UUID_LEN_16,
-                                   .uuid.uuid16 = KLIP_SVC_UUID};
         esp_bt_uuid_t cmd_uuid = {.len = ESP_UUID_LEN_16,
                                    .uuid.uuid16 = KLIP_CHAR_CMD_UUID};
         esp_bt_uuid_t tel_uuid = {.len = ESP_UUID_LEN_16,

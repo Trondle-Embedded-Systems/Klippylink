@@ -1,0 +1,4 @@
+dependencies:
+  espressif/led_strip: ">=2.0.0"
+  espressif/cJSON: ">=1.7.0"
+  idf: ">=5.0.0"

@@ -14,7 +14,7 @@ idf_component_register(
         bt
         nvs_flash
         spiffs
-        esp_ota_ops
+        app_update
         cJSON
         driver
         freertos
