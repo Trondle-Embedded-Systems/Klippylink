@@ -1,0 +1,14 @@
+[project]
+name = "klippylink-host"
+version = "0.1.0"
+description = "Klippylink Linux host — serial bridge to ESP32-C3 dongle"
+requires-python = ">=3.9"
+dependencies = [
+    "pyserial>=3.5",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+]
