@@ -15,7 +15,7 @@ idf_component_register(
         nvs_flash
         spiffs
         app_update
-        cJSON
+        json
         driver
         freertos
         esp_log

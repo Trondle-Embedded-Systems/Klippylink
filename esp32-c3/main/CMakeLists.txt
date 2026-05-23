@@ -18,7 +18,7 @@ idf_component_register(
         esp_netif
         esp_event
         nvs_flash
-        cJSON
+        json
         driver
         freertos
         esp_log
