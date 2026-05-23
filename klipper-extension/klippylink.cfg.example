@@ -1,0 +1,47 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# KlippyLink printer.cfg example
+# Copy the relevant sections into your printer.cfg and adjust values.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Router (one per KlippyLink mesh) ─────────────────────────────────────────
+[klippylink router]
+# IP address of the ESP32-C3 router on your local network
+host: 192.168.1.42
+# HTTP port — default 8765
+port: 8765
+
+
+# ── NeoPixel strip on a node ─────────────────────────────────────────────────
+[klippylink_neopixel toolhead_leds]
+router:  router             # matches [klippylink router] above
+node:    toolhead_node      # device_name in node's config.json
+strip:   status_leds        # strip name in node's config.json
+count:   8                  # number of LEDs (informational)
+
+# GCode usage:
+#   SET_KLIPPYLINK_LED STRIP=toolhead_leds RED=1 GREEN=0 BLUE=0        (all red)
+#   SET_KLIPPYLINK_LED STRIP=toolhead_leds RED=0 GREEN=1 BLUE=0 INDEX=3 (one pixel)
+
+
+# ── Endstop on a node ────────────────────────────────────────────────────────
+[klippylink_endstop x_min_ext]
+router:   router
+node:     toolhead_node
+endstop:  x_min
+
+# GCode usage:
+#   QUERY_KLIPPYLINK_ENDSTOP ENDSTOP=x_min_ext
+
+
+# ── Example macro — rainbow idle animation ───────────────────────────────────
+[gcode_macro KLIPPYLINK_RAINBOW]
+description: Cycle LEDs through colours
+gcode:
+  {% set steps = [
+    (1,0,0),(1,0.5,0),(1,1,0),(0,1,0),(0,1,1),(0,0,1),(0.5,0,1)
+  ] %}
+  {% for r,g,b in steps %}
+    SET_KLIPPYLINK_LED STRIP=toolhead_leds RED={r} GREEN={g} BLUE={b}
+    G4 P200
+  {% endfor %}
+  SET_KLIPPYLINK_LED STRIP=toolhead_leds RED=0 GREEN=0 BLUE=0

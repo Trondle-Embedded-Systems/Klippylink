@@ -1,0 +1,10 @@
+{
+  "_comment": "Router config is stored in NVS (not SPIFFS). Use install scripts or POST /api/wifi to set WiFi credentials. This file is for documentation purposes only.",
+  "wifi": {
+    "ssid": "YourNetworkName",
+    "password": "YourPassword"
+  },
+  "server": {
+    "port": 8765
+  }
+}

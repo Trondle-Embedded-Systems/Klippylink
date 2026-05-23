@@ -1,0 +1,26 @@
+{
+  "device": {
+    "name": "toolhead_node"
+  },
+  "neopixels": [
+    {
+      "name": "status_leds",
+      "pin": 4,
+      "count": 8
+    }
+  ],
+  "endstops": [
+    {
+      "name": "x_min",
+      "pin": 5,
+      "pull_up": true,
+      "active_low": true
+    },
+    {
+      "name": "y_min",
+      "pin": 6,
+      "pull_up": true,
+      "active_low": true
+    }
+  ]
+}
