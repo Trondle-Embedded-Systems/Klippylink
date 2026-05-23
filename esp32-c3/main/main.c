@@ -1,62 +1,62 @@
-#include <stdio.h>
-#include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
-#include "driver/uart.h"
+#include "nvs_flash.h"
 
-#include "klip_protocol.h"
+#include "wifi_manager.h"
+#include "http_server.h"
 #include "ble_central.h"
-#include "command_parser.h"
+#include "node_registry.h"
+#include "klip_protocol.h"
 
-#define TAG "C3_MAIN"
+#define TAG "ROUTER_MAIN"
 
-#define UART_PORT_NUM  UART_NUM_0
-#define UART_BUF_SIZE  512
-
-static uint8_t uart_rx_buf[UART_BUF_SIZE];
-
-static void uart_init(void)
+static void on_node_packet(uint16_t conn_id,
+                            const klip_packet_t *pkt, uint8_t total_len)
 {
-    uart_config_t uart_config = {
-        .baud_rate = 115200,
-        .data_bits = UART_DATA_8_BITS,
-        .parity = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-        .source_clk = UART_SCLK_DEFAULT,
-    };
-    uart_driver_install(UART_PORT_NUM, UART_BUF_SIZE * 2, 0, 0, NULL, 0);
-    uart_param_config(UART_PORT_NUM, &uart_config);
-}
-
-static void send_to_host(const klip_packet_t *pkt, uint8_t total_len)
-{
-    uart_write_bytes(UART_PORT_NUM, (const char *)pkt, total_len);
-}
-
-static void ble_response_callback(const klip_packet_t *pkt, uint8_t total_len)
-{
-    ESP_LOGI(TAG, "Forwarding BLE response to host (cmd=0x%02X, len=%d)",
-             pkt->command, pkt->length);
-    send_to_host(pkt, total_len);
+    ESP_LOGD(TAG, "Packet from conn_id=%d cmd=0x%02X len=%d",
+             conn_id, pkt->command, pkt->length);
+    /* Dispatching is done inside ble_central itself for known packet types.
+     * Place custom forwarding logic here if needed. */
 }
 
 void app_main(void)
 {
-    ESP_LOGI(TAG, "Klippylink ESP32-C3 dongle starting...");
-    uart_init();
+    ESP_LOGI(TAG, "Klippylink router starting...");
 
-    ble_central_init(ble_response_callback);
-    command_parser_init();
+    /* NVS is required by WiFi and BLE */
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES ||
+        ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        nvs_flash_erase();
+        nvs_flash_init();
+    }
 
-    ESP_LOGI(TAG, "Ready. Waiting for commands from host...");
+    /* Node registry must be ready before BLE central starts */
+    node_registry_init();
+
+    /* Connect to WiFi (reads credentials from NVS) */
+    ret = wifi_manager_init();
+    if (ret == ESP_OK) {
+        ESP_LOGI(TAG, "WiFi connected: %s", wifi_manager_ip());
+        ESP_ERROR_CHECK(http_server_start());
+        ESP_LOGI(TAG, "HTTP API on http://%s:8765", wifi_manager_ip());
+    } else if (ret == ESP_ERR_NOT_FOUND) {
+        ESP_LOGW(TAG, "No WiFi credentials — HTTP server not started");
+        ESP_LOGW(TAG, "POST /api/wifi with {ssid,password} once connected via USB");
+    } else {
+        ESP_LOGE(TAG, "WiFi failed: %s — HTTP server not started", esp_err_to_name(ret));
+    }
+
+    /* Start BLE central — will scan and auto-connect to KlipLink nodes */
+    ESP_ERROR_CHECK(ble_central_init(on_node_packet));
+
+    ESP_LOGI(TAG, "Router ready");
 
     while (1) {
-        int len = uart_read_bytes(UART_PORT_NUM, uart_rx_buf, UART_BUF_SIZE, pdMS_TO_TICKS(10));
-        if (len > 0) {
-            command_parser_feed(uart_rx_buf, len);
-        }
-        ble_central_poll();
+        vTaskDelay(pdMS_TO_TICKS(5000));
+        ESP_LOGI(TAG, "Nodes connected: %d  WiFi: %s",
+                 node_count(),
+                 wifi_manager_is_connected() ? wifi_manager_ip() : "offline");
     }
 }

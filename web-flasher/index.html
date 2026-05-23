@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KlippyLink Flasher</title>
+  <script
+    type="module"
+    src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"
+  ></script>
+  <style>
+    :root {
+      --accent: #00b3b3;
+      --bg: #1a1a2e;
+      --surface: #16213e;
+      --text: #e0e0e0;
+      --text-muted: #888;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+    header { text-align: center; margin-bottom: 2.5rem; }
+    header h1 { font-size: 2rem; color: var(--accent); letter-spacing: 1px; }
+    header p  { color: var(--text-muted); margin-top: 0.4rem; }
+
+    .cards {
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      width: 100%;
+      max-width: 860px;
+    }
+    .card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 1.8rem;
+      flex: 1 1 320px;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .card h2 { font-size: 1.2rem; color: var(--accent); }
+    .card p  { color: var(--text-muted); font-size: 0.9rem; line-height: 1.5; }
+    .badge {
+      display: inline-block;
+      background: rgba(0,179,179,0.15);
+      color: var(--accent);
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 99px;
+      border: 1px solid rgba(0,179,179,0.4);
+    }
+    esp-web-install-button {
+      --esp-tools-button-color: var(--accent);
+      --esp-tools-button-text-color: #000;
+      margin-top: auto;
+    }
+    .steps {
+      width: 100%;
+      max-width: 860px;
+      margin-top: 2.5rem;
+    }
+    .steps h2 { color: var(--accent); margin-bottom: 1rem; }
+    ol { padding-left: 1.4rem; }
+    ol li { margin-bottom: 0.7rem; color: var(--text-muted); line-height: 1.5; }
+    ol li b { color: var(--text); }
+    code {
+      background: rgba(255,255,255,0.07);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+    footer {
+      margin-top: 3rem;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      text-align: center;
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>KlippyLink Flasher</h1>
+    <p>Flash your ESP32 devices directly from the browser — no drivers required.</p>
+  </header>
+
+  <div class="cards">
+
+    <!-- Node card -->
+    <div class="card">
+      <span class="badge">ESP32-S3</span>
+      <h2>Node Firmware</h2>
+      <p>
+        Flash this to any <b>ESP32-S3</b> that will act as a peripheral node —
+        controlling NeoPixel LEDs, reading endstops, and reporting state to
+        the router over BLE.
+      </p>
+      <p>
+        After flashing, upload your <code>config.json</code> to the device
+        via the OTA config endpoint or copy it to the SPIFFS partition.
+      </p>
+      <esp-web-install-button manifest="manifest.json" data-chip="ESP32-S3">
+        <button slot="activate">Flash Node</button>
+      </esp-web-install-button>
+    </div>
+
+    <!-- Router card -->
+    <div class="card">
+      <span class="badge">ESP32-C3</span>
+      <h2>Router Firmware</h2>
+      <p>
+        Flash this to the <b>ESP32-C3</b> that bridges BLE nodes to Klipper.
+        It scans for nodes, maintains connections, and exposes a REST + WebSocket
+        API on port <code>8765</code>.
+      </p>
+      <p>
+        After flashing, connect via USB serial and run
+        <code>klippylink-config.py --port /dev/ttyACM0 --ssid … --password …</code>
+        to set WiFi credentials.
+      </p>
+      <esp-web-install-button manifest="manifest.json" data-chip="ESP32-C3">
+        <button slot="activate">Flash Router</button>
+      </esp-web-install-button>
+    </div>
+
+  </div>
+
+  <!-- Step-by-step guide -->
+  <div class="steps">
+    <h2>First-time setup guide</h2>
+    <ol>
+      <li>
+        <b>Flash the router</b> (ESP32-C3) using the button above.
+        Plug it into your computer via USB before clicking.
+      </li>
+      <li>
+        <b>Configure WiFi</b> on the router — open a terminal and run:<br/>
+        <code>python3 klipper-extension/klippylink-config.py --port /dev/ttyACM0 --ssid "MyNet" --password "secret"</code>
+      </li>
+      <li>
+        <b>Flash each node</b> (ESP32-S3) using the "Flash Node" button.
+      </li>
+      <li>
+        <b>Upload a config</b> to each node — create a <code>config.json</code>
+        (see <code>configs/node_example.json</code>) and POST it to<br/>
+        <code>http://&lt;router-ip&gt;:8765/api/nodes/&lt;node&gt;/config</code>
+      </li>
+      <li>
+        <b>Install the Klipper extension</b> on your Pi:<br/>
+        <code>bash klipper-extension/install.sh</code>
+      </li>
+      <li>
+        Add the <code>[klippylink]</code> section to your <code>printer.cfg</code>
+        (see <code>klipper-extension/klippylink.cfg.example</code>) and restart Klipper.
+      </li>
+    </ol>
+  </div>
+
+  <footer>
+    KlippyLink &mdash; open-source Klipper extension nodes &bull;
+    <a href="https://github.com/your-org/klippylink" target="_blank">GitHub</a>
+  </footer>
+
+</body>
+</html>

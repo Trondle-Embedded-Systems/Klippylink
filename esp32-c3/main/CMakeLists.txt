@@ -1,4 +1,26 @@
 idf_component_register(
-    SRCS "main.c"
-    INCLUDE_DIRS "."
+    SRCS
+        "main.c"
+        "ble_central.c"
+        "wifi_manager.c"
+        "http_server.c"
+        "node_registry.c"
+        "ota_handler.c"
+        "command_parser.c"
+    INCLUDE_DIRS
+        "."
+        "../../shared/protocol"
+    REQUIRES
+        bt
+        esp_wifi
+        esp_http_server
+        esp_https_ota
+        esp_netif
+        esp_event
+        nvs_flash
+        cJSON
+        driver
+        freertos
+        esp_log
+        esp_rom
 )

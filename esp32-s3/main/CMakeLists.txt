@@ -1,4 +1,23 @@
 idf_component_register(
-    SRCS "main.c"
-    INCLUDE_DIRS "."
+    SRCS
+        "main.c"
+        "neopixel.c"
+        "endstop.c"
+        "config_loader.c"
+        "gatt_server.c"
+        "ota_handler.c"
+    INCLUDE_DIRS
+        "."
+        "../../shared/protocol"
+    REQUIRES
+        led_strip
+        bt
+        nvs_flash
+        spiffs
+        esp_ota_ops
+        cJSON
+        driver
+        freertos
+        esp_log
+        esp_rom
 )

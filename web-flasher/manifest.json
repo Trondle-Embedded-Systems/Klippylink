@@ -1,0 +1,51 @@
+{
+  "name": "KlippyLink",
+  "version": "1.0.0",
+  "home_assistant_domain": null,
+  "funding_url": null,
+  "new_install_prompt_erase": true,
+  "builds": [
+    {
+      "chipFamily": "ESP32-S3",
+      "parts": [
+        {
+          "path": "firmware/node-bootloader.bin",
+          "offset": 0
+        },
+        {
+          "path": "firmware/node-partition-table.bin",
+          "offset": 32768
+        },
+        {
+          "path": "firmware/node-ota_data_initial.bin",
+          "offset": 57344
+        },
+        {
+          "path": "firmware/klippylink-node.bin",
+          "offset": 65536
+        }
+      ]
+    },
+    {
+      "chipFamily": "ESP32-C3",
+      "parts": [
+        {
+          "path": "firmware/router-bootloader.bin",
+          "offset": 0
+        },
+        {
+          "path": "firmware/router-partition-table.bin",
+          "offset": 32768
+        },
+        {
+          "path": "firmware/router-ota_data_initial.bin",
+          "offset": 57344
+        },
+        {
+          "path": "firmware/klippylink-router.bin",
+          "offset": 65536
+        }
+      ]
+    }
+  ]
+}
