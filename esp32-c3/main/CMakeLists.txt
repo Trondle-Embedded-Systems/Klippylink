@@ -6,7 +6,6 @@ idf_component_register(
         "http_server.c"
         "node_registry.c"
         "ota_handler.c"
-        "command_parser.c"
     INCLUDE_DIRS
         "."
         "../../shared/protocol"
@@ -19,8 +18,4 @@ idf_component_register(
         esp_event
         nvs_flash
         json
-        driver
-        freertos
-        esp_log
-        esp_rom
 )

@@ -16,8 +16,5 @@ idf_component_register(
         spiffs
         app_update
         json
-        driver
-        freertos
-        esp_log
-        esp_rom
+        esp_driver_gpio
 )
