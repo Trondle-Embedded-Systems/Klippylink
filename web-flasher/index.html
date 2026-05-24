@@ -151,17 +151,17 @@
     <div class="card-top">
       <div class="card-info">
         <div class="card-title">Router</div>
-        <span class="chip-label">ESP32-C3</span>
+        <span class="chip-label">ESP32-C3 · S3 · C5</span>
       </div>
       <div class="install-wrap">
-        <esp-web-install-button manifest="manifest.json" data-chip="ESP32-C3">
+        <esp-web-install-button manifest="manifest-router.json">
           <button slot="activate">Install</button>
         </esp-web-install-button>
       </div>
     </div>
     <div class="steps">
       <ol>
-        <li>Plug the ESP32-C3 into USB, then click <b>Install</b>.</li>
+        <li>Plug your ESP32 into USB, then click <b>Install</b>. Any supported variant works.</li>
         <li>Set WiFi credentials once:<br/>
           <code>POST http://&lt;router-ip&gt;:8765/api/wifi</code> <code>{"ssid":"…","password":"…"}</code>
         </li>
@@ -175,17 +175,17 @@
     <div class="card-top">
       <div class="card-info">
         <div class="card-title">Node</div>
-        <span class="chip-label">ESP32-S3</span>
+        <span class="chip-label">ESP32-S3 · C3 · C5</span>
       </div>
       <div class="install-wrap">
-        <esp-web-install-button manifest="manifest.json" data-chip="ESP32-S3">
+        <esp-web-install-button manifest="manifest-node.json">
           <button slot="activate">Install</button>
         </esp-web-install-button>
       </div>
     </div>
     <div class="steps">
       <ol>
-        <li>Plug the ESP32-S3 into USB, then click <b>Install</b>.</li>
+        <li>Plug your ESP32 into USB, then click <b>Install</b>. Any supported variant works.</li>
         <li>Upload <code>config.json</code> to the node's SPIFFS partition to define its LEDs and endstops.</li>
         <li>The router discovers this node automatically over BLE.</li>
       </ol>
