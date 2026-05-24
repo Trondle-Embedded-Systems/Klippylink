@@ -3,12 +3,11 @@
 # Copy the relevant sections into your printer.cfg and adjust values.
 # ─────────────────────────────────────────────────────────────────────────────
 
-# ── Router (one per KlippyLink mesh) ─────────────────────────────────────────
+# ── Router / linux-host API (one per KlippyLink mesh) ────────────────────────
 [klippylink router]
-# IP address of the ESP32-C3 router on your local network
-host: 192.168.1.42
-# HTTP port — default 8765
-port: 8765
+# URL of the linux-host API service running on the same machine as Klipper.
+# Default: http://localhost:8080
+api_url: http://localhost:8080
 
 
 # ── NeoPixel strip on a node ─────────────────────────────────────────────────
@@ -31,6 +30,23 @@ endstop:  x_min
 
 # GCode usage:
 #   QUERY_KLIPPYLINK_ENDSTOP ENDSTOP=x_min_ext
+
+
+# ── PID heater on a VARIANT_FULL node (ESP32-S3) ─────────────────────────────
+[klippylink_heater chamber_heater]
+router:      router
+node:        toolhead_node
+target_temp: 0.0    # set via SET_HEATER_TEMPERATURE at runtime
+kp:          1.0
+ki:          0.1
+kd:          0.01
+
+
+# ── Heater emergency macro — fires if BLE heartbeat times out ────────────────
+[gcode_macro KLIPPYLINK_HEATER_EMERGENCY]
+description: Emergency stop triggered by KlippyLink BLE heartbeat timeout
+gcode:
+    M112  ; emergency stop
 
 
 # ── Example macro — rainbow idle animation ───────────────────────────────────

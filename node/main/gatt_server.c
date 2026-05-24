@@ -4,6 +4,8 @@
 #include "led_effects.h"
 #include "endstop.h"
 #include "ota_handler.h"
+#include "wifi_node.h"
+#include "heater.h"
 #include "esp_log.h"
 #include "esp_bt.h"
 #include "esp_bt_main.h"
@@ -232,6 +234,39 @@ static void dispatch_packet(const klip_packet_t *pkt)
     case KLIPCMD_OTA_END:
         ota_end();
         break;
+    case KLIPCMD_WIFI_ENABLE: {
+        /* payload: [ssid_len u8, ssid bytes, pass_len u8, pass bytes] */
+        if (pkt->length < 2) break;
+        uint8_t ssid_len = pkt->payload[0];
+        if (pkt->length < 1 + ssid_len + 1) break;
+        uint8_t pass_len = pkt->payload[1 + ssid_len];
+        if (pkt->length < 1 + ssid_len + 1 + pass_len) break;
+
+        char ssid[33] = {0};
+        char pass[65] = {0};
+        memcpy(ssid, &pkt->payload[1], ssid_len < 32 ? ssid_len : 32);
+        memcpy(pass, &pkt->payload[2 + ssid_len], pass_len < 64 ? pass_len : 64);
+
+        wifi_node_enable(ssid, pass, NULL);
+        break;
+    }
+    case KLIPCMD_HEARTBEAT: {
+        /* Echo heartbeat back to central. */
+        uint8_t buf[KLIP_HEADER_SIZE];
+        klip_packet_t *r = (klip_packet_t *)buf;
+        r->magic = KLIPPROTO_MAGIC; r->command = KLIPCMD_HEARTBEAT; r->length = 0;
+        gatt_server_notify(buf, KLIP_HEADER_SIZE);
+        break;
+    }
+#ifdef CONFIG_KLIPNODE_VARIANT_FULL
+    case KLIPCMD_HEATER_SET:
+        if (pkt->length >= sizeof(klip_heater_cfg_t)) {
+            const klip_heater_cfg_t *cfg = (const klip_heater_cfg_t *)pkt->payload;
+            heater_set_target(cfg->target_temp);
+            heater_set_pid(cfg->kp, cfg->ki, cfg->kd);
+        }
+        break;
+#endif
     default:
         ESP_LOGW(TAG, "Unknown command 0x%02X", pkt->command);
         break;
@@ -287,6 +322,9 @@ static void gatts_event_handler(esp_gatts_cb_event_t event,
         s_conn_id = 0xFFFF;
         s_notify_enabled = false;
         ESP_LOGI(TAG, "Central disconnected, restarting advertising");
+#ifdef CONFIG_KLIPNODE_VARIANT_FULL
+        heater_emergency_off();
+#endif
         esp_ble_gap_start_advertising(&s_adv_params);
         break;
 

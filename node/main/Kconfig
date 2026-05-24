@@ -1,0 +1,17 @@
+menu "KlipNode Configuration"
+
+choice KLIPNODE_VARIANT
+    prompt "Node hardware variant"
+    default KLIPNODE_VARIANT_MINIMAL
+    help
+        Select the hardware variant to compile. FULL adds WiFi, a web config UI,
+        and a PID heater control loop (requires ESP32-S3 recommended). MINIMAL
+        is BLE-only and fits on ESP32-C3/C5.
+
+    config KLIPNODE_VARIANT_FULL
+        bool "Full (ESP32-S3): WiFi, web config UI, PID heater"
+    config KLIPNODE_VARIANT_MINIMAL
+        bool "Minimal (ESP32-C3/C5): BLE only"
+endchoice
+
+endmenu

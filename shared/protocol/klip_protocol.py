@@ -20,6 +20,8 @@ class KlipCommand(IntEnum):
     NEOPIXEL_SET       = 0x50
     NEOPIXEL_SET_ALL   = 0x51
     NEOPIXEL_SET_RANGE = 0x52
+    LED_ZONE_SET       = 0x53
+    LED_ZONE_CLR       = 0x54
     ENDSTOP_QUERY      = 0x60
     ENDSTOP_STATE      = 0x61
     ENDSTOP_SUBSCRIBE  = 0x62
@@ -29,6 +31,11 @@ class KlipCommand(IntEnum):
     OTA_DATA           = 0x81
     OTA_END            = 0x82
     OTA_STATUS         = 0x83
+    WIFI_ENABLE        = 0xA0
+    WIFI_STATUS        = 0xA1
+    HEATER_SET         = 0xB0
+    HEATER_STATE       = 0xB1
+    HEARTBEAT          = 0xC0
     ERROR              = 0xFF
 
 
@@ -113,3 +120,35 @@ def decode_ota_status(payload: bytes):
     if not payload:
         return None
     return payload[0]
+
+
+def make_heater_set(target_temp: float, kp: float, ki: float, kd: float) -> KlipPacket:
+    from struct import pack
+    return KlipPacket(KlipCommand.HEATER_SET, pack("<ffff", target_temp, kp, ki, kd))
+
+
+def decode_heater_state(payload: bytes):
+    """Returns (temp_current, temp_target, duty) or None."""
+    from struct import unpack
+    if len(payload) < 9:
+        return None
+    temp_current, temp_target, duty = unpack("<ffB", payload[:9])
+    return temp_current, temp_target, duty
+
+
+def make_wifi_enable(ssid: str, password: str) -> KlipPacket:
+    ssid_b = ssid.encode()
+    pass_b = password.encode()
+    payload = bytes([len(ssid_b)]) + ssid_b + bytes([len(pass_b)]) + pass_b
+    return KlipPacket(KlipCommand.WIFI_ENABLE, payload)
+
+
+def decode_wifi_status(payload: bytes):
+    """Returns IPv4 address as string, or None if down."""
+    from struct import unpack
+    if len(payload) < 4:
+        return None
+    ip = unpack("<BBBB", payload[:4])
+    if ip == (0, 0, 0, 0):
+        return None
+    return f"{ip[0]}.{ip[1]}.{ip[2]}.{ip[3]}"

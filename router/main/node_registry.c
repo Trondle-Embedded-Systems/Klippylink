@@ -16,6 +16,17 @@ void node_registry_init(void)
 
 node_t *node_add(const esp_bd_addr_t bda, uint16_t conn_id)
 {
+    /* Reuse a disconnected slot with the same BDA (reconnect case). */
+    for (int i = 0; i < s_count; i++) {
+        if (!s_nodes[i].connected &&
+            memcmp(s_nodes[i].bda, bda, sizeof(esp_bd_addr_t)) == 0) {
+            s_nodes[i].conn_id   = conn_id;
+            s_nodes[i].connected = true;
+            ESP_LOGI(TAG, "Node reconnected: %s idx=%d conn_id=%d",
+                     s_nodes[i].name, i, conn_id);
+            return &s_nodes[i];
+        }
+    }
     if (s_count >= NODE_MAX_COUNT) {
         ESP_LOGE(TAG, "Node table full");
         return NULL;
@@ -27,7 +38,8 @@ node_t *node_add(const esp_bd_addr_t bda, uint16_t conn_id)
     n->connected = true;
     snprintf(n->name, NODE_NAME_LEN, "node_%02X%02X",
              bda[4], bda[5]);
-    ESP_LOGI(TAG, "Node added: %s conn_id=%d", n->name, conn_id);
+    ESP_LOGI(TAG, "Node added: %s idx=%d conn_id=%d",
+             n->name, (int)(n - s_nodes), conn_id);
     return n;
 }
 
@@ -35,13 +47,9 @@ void node_remove(uint16_t conn_id)
 {
     for (int i = 0; i < s_count; i++) {
         if (s_nodes[i].conn_id == conn_id) {
-            ESP_LOGI(TAG, "Node removed: %s", s_nodes[i].name);
-            /* Compact the array */
-            int remaining = s_count - i - 1;
-            if (remaining > 0)
-                memmove(&s_nodes[i], &s_nodes[i + 1],
-                        remaining * sizeof(node_t));
-            s_count--;
+            ESP_LOGI(TAG, "Node disconnected: %s idx=%d", s_nodes[i].name, i);
+            /* Mark disconnected but keep the slot so the index remains stable. */
+            s_nodes[i].connected = false;
             return;
         }
     }
@@ -65,6 +73,21 @@ node_t *node_by_name(const char *name)
 
 int node_count(void)    { return s_count; }
 node_t *node_get(int i) { return (i < s_count) ? &s_nodes[i] : NULL; }
+
+int node_count_connected(void)
+{
+    int n = 0;
+    for (int i = 0; i < s_count; i++)
+        if (s_nodes[i].connected) n++;
+    return n;
+}
+
+int node_id_by_conn_id(uint16_t conn_id)
+{
+    for (int i = 0; i < s_count; i++)
+        if (s_nodes[i].conn_id == conn_id && s_nodes[i].connected) return i;
+    return -1;
+}
 
 void node_update_info(node_t *node, const char *json)
 {

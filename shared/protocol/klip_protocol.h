@@ -66,6 +66,23 @@ typedef enum {
     KLIPCMD_OTA_END             = 0x82,
     KLIPCMD_OTA_STATUS          = 0x83,
 
+    /* WiFi control (node-side)
+     * WIFI_ENABLE  payload: [ssid_len u8, ssid bytes, pass_len u8, pass bytes]
+     * WIFI_STATUS  payload: [ip_addr 4 bytes LE] or [0,0,0,0] if down
+     */
+    KLIPCMD_WIFI_ENABLE         = 0xA0,
+    KLIPCMD_WIFI_STATUS         = 0xA1,
+
+    /* Heater / PID control (VARIANT_FULL nodes only)
+     * HEATER_SET   payload: klip_heater_cfg_t
+     * HEATER_STATE payload: [temp_current f32 LE, temp_target f32 LE, duty u8]
+     */
+    KLIPCMD_HEATER_SET          = 0xB0,
+    KLIPCMD_HEATER_STATE        = 0xB1,
+
+    /* Heartbeat — no payload; node must reply HEARTBEAT within 1 s */
+    KLIPCMD_HEARTBEAT           = 0xC0,
+
     KLIPCMD_ERROR               = 0xFF,
 } klip_command_t;
 
@@ -132,3 +149,14 @@ typedef struct __attribute__((packed)) {
     uint32_t size;
     uint32_t crc32;
 } klip_ota_begin_t;
+
+typedef struct __attribute__((packed)) {
+    float target_temp;
+    float kp, ki, kd;
+} klip_heater_cfg_t;
+
+typedef struct __attribute__((packed)) {
+    float   temp_current;
+    float   temp_target;
+    uint8_t duty;
+} klip_heater_state_t;

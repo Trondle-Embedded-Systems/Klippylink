@@ -1,7 +1,7 @@
 #include "ble_central.h"
 #include "node_registry.h"
 #include "klip_protocol.h"
-#include "http_server.h"
+#include "serial_bridge.h"
 #include "esp_log.h"
 #include "esp_bt.h"
 #include "esp_bt_main.h"
@@ -9,7 +9,6 @@
 #include "esp_gattc_api.h"
 #include "esp_bt_device.h"
 #include "nvs_flash.h"
-#include "cJSON.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include <string.h>
@@ -103,6 +102,17 @@ static void gattc_event_handler(esp_gattc_cb_event_t event,
 
         node_t *node = node_add(param->connect.remote_bda, conn_id);
         if (!node) break;
+
+        /* Notify host: node connected (synthetic PING frame). */
+        int nid = node_id_by_conn_id(conn_id);
+        if (nid >= 0) {
+            uint8_t ping[KLIP_HEADER_SIZE];
+            klip_packet_t *p = (klip_packet_t *)ping;
+            p->magic   = KLIPPROTO_MAGIC;
+            p->command = KLIPCMD_PING;
+            p->length  = 0;
+            serial_bridge_emit((uint8_t)nid, ping, KLIP_HEADER_SIZE);
+        }
 
         esp_ble_gattc_search_service(gattc_if, conn_id, NULL);
         break;
@@ -214,7 +224,7 @@ static void gattc_event_handler(esp_gattc_cb_event_t event,
         const klip_packet_t *pkt = (const klip_packet_t *)data;
         if (pkt->magic != KLIPPROTO_MAGIC) break;
 
-        /* Update node registry from known notification types */
+        /* Update local registry state for known notification types. */
         node_t *node = node_by_conn_id(conn_id);
         if (node) {
             switch ((klip_command_t)pkt->command) {
@@ -224,34 +234,21 @@ static void gattc_event_handler(esp_gattc_cb_event_t event,
                     memcpy(json, pkt->payload, pkt->length);
                     json[pkt->length] = '\0';
                     node_update_info(node, json);
-
-                    /* Broadcast event */
-                    cJSON *ev = cJSON_CreateObject();
-                    cJSON_AddStringToObject(ev, "event", "node_connected");
-                    cJSON_AddStringToObject(ev, "node",  node->name);
-                    char *ej = cJSON_PrintUnformatted(ev);
-                    if (ej) { http_server_broadcast(ej); free(ej); }
-                    cJSON_Delete(ev);
                 }
                 break;
             case KLIPCMD_ENDSTOP_STATE:
-                if (pkt->length >= 2) {
+                if (pkt->length >= 2)
                     node_set_endstop(node, pkt->payload[0], pkt->payload[1] != 0);
-
-                    cJSON *ev = cJSON_CreateObject();
-                    cJSON_AddStringToObject(ev, "event", "endstop");
-                    cJSON_AddStringToObject(ev, "node",  node->name);
-                    cJSON_AddNumberToObject(ev, "idx",   pkt->payload[0]);
-                    cJSON_AddBoolToObject(ev, "triggered", pkt->payload[1] != 0);
-                    char *ej = cJSON_PrintUnformatted(ev);
-                    if (ej) { http_server_broadcast(ej); free(ej); }
-                    cJSON_Delete(ev);
-                }
                 break;
             default:
                 break;
             }
         }
+
+        /* Forward raw packet to host over serial. */
+        int nid = node_id_by_conn_id(conn_id);
+        if (nid >= 0)
+            serial_bridge_emit((uint8_t)nid, data, (uint8_t)len);
 
         if (s_response_cb) s_response_cb(conn_id, pkt, (uint8_t)len);
         break;
@@ -261,15 +258,17 @@ static void gattc_event_handler(esp_gattc_cb_event_t event,
         uint16_t conn_id = param->disconnect.conn_id;
         ESP_LOGI(TAG, "Node disconnected, conn_id=%d", conn_id);
 
-        node_t *node = node_by_conn_id(conn_id);
-        if (node) {
-            cJSON *ev = cJSON_CreateObject();
-            cJSON_AddStringToObject(ev, "event", "node_disconnected");
-            cJSON_AddStringToObject(ev, "node",  node->name);
-            char *ej = cJSON_PrintUnformatted(ev);
-            if (ej) { http_server_broadcast(ej); free(ej); }
-            cJSON_Delete(ev);
+        /* Notify host before marking slot disconnected. */
+        int nid = node_id_by_conn_id(conn_id);
+        if (nid >= 0) {
+            uint8_t err_pkt[KLIP_HEADER_SIZE];
+            klip_packet_t *p = (klip_packet_t *)err_pkt;
+            p->magic   = KLIPPROTO_MAGIC;
+            p->command = KLIPCMD_ERROR;
+            p->length  = 0;
+            serial_bridge_emit((uint8_t)nid, err_pkt, KLIP_HEADER_SIZE);
         }
+
         node_remove(conn_id);
         free_conn(conn_id);
 

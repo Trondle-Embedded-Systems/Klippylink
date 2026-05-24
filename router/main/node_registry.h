@@ -35,12 +35,19 @@ typedef struct {
 } node_t;
 
 void    node_registry_init(void);
+/** Add a node; reuses a disconnected slot with matching BDA if available. */
 node_t *node_add(const esp_bd_addr_t bda, uint16_t conn_id);
+/** Mark node as disconnected (does NOT compact the array — preserves stable indices). */
 void    node_remove(uint16_t conn_id);
 node_t *node_by_conn_id(uint16_t conn_id);
 node_t *node_by_name(const char *name);
+/** Number of currently connected nodes. */
+int     node_count_connected(void);
+/** Total slots used (including disconnected). Always use node_get() with this. */
 int     node_count(void);
 node_t *node_get(int idx);
+/** Returns the stable array index for conn_id, or -1 if not found. */
+int     node_id_by_conn_id(uint16_t conn_id);
 
 /** Update node info from a parsed JSON device-info response payload. */
 void node_update_info(node_t *node, const char *json);

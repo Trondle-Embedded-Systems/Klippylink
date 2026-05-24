@@ -2,21 +2,17 @@ idf_component_register(
     SRCS
         "main.c"
         "ble_central.c"
-        "wifi_manager.c"
-        "http_server.c"
+        "serial_bridge.c"
+        "command_parser.c"
         "node_registry.c"
         "ota_handler.c"
-    EMBED_FILES
-        "web_ui.html"
     INCLUDE_DIRS
         "."
         "../../shared/protocol"
     REQUIRES
         bt
-        esp_wifi
-        esp_http_server
+        driver
         esp_https_ota
-        esp_netif
         esp_event
         nvs_flash
         json

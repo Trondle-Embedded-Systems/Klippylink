@@ -1,23 +1,30 @@
 """
 KlippyLink Klipper extra — bridges Klipper to KlippyLink BLE nodes via the
-router's HTTP + WebSocket API.
+linux-host API server (default http://localhost:8080).
 
 Config sections:
 
   [klippylink router_name]
-  host: 192.168.1.42          # router IP
-  port: 8765                  # default
+  api_url: http://localhost:8080   # linux-host API (default)
 
   [klippylink_neopixel my_leds]
   router: router_name
-  node:   toolhead_node       # node device_name from its config.json
-  strip:  status_leds         # strip name from node config.json
+  node:   toolhead_node            # node device_name from its config.json
+  strip:  status_leds              # strip name from node config.json
   count:  8
 
   [klippylink_endstop x_min]
   router: router_name
   node:   toolhead_node
-  endstop: x_min              # endstop name from node config.json
+  endstop: x_min
+
+  [klippylink_heater chamber_heater]
+  router: router_name
+  node:   toolhead_node
+  target_temp: 0.0
+  kp: 1.0
+  ki: 0.1
+  kd: 0.01
 
 GCode commands produced:
 
@@ -33,39 +40,30 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-POLL_INTERVAL_S = 0.1       # endstop polling interval
+POLL_INTERVAL_S = 0.1
 
 
-# ── Router ────────────────────────────────────────────────────────────────────
+# ── Router / API gateway ──────────────────────────────────────────────────────
 
 class KlippylinkRouter:
     def __init__(self, config):
         self.printer  = config.get_printer()
         self.name     = config.get_name().split()[-1]
-        self.host     = config.get('host')
-        self.port     = config.getint('port', 8765)
-        self._base    = f"http://{self.host}:{self.port}"
+        self._base    = config.get('api_url', 'http://localhost:8080').rstrip('/')
         self._lock    = threading.Lock()
-        self._ws      = None
 
         self.printer.register_event_handler("klippy:connect",
                                              self._handle_connect)
-        self.printer.register_event_handler("klippy:disconnect",
-                                             self._handle_disconnect)
 
     def _handle_connect(self):
         try:
             info = self._get("/api/info")
-            logger.info("KlippyLink router '%s' connected: %s", self.name, info)
+            logger.info("KlippyLink host '%s' connected: %s", self.name, info)
         except Exception as e:
             raise self.printer.config_error(
-                f"Cannot reach KlippyLink router '{self.name}' "
+                f"Cannot reach KlippyLink host '{self.name}' "
                 f"at {self._base}: {e}"
             )
-        self._start_ws()
-
-    def _handle_disconnect(self):
-        self._stop_ws()
 
     # ── HTTP helpers ──────────────────────────────────────────────────────────
 
@@ -97,6 +95,12 @@ class KlippylinkRouter:
         except Exception as e:
             logger.warning("set_neopixel failed: %s", e)
 
+    def set_led_zone(self, node, zone_body: dict):
+        try:
+            self._post(f"/api/nodes/{node}/leds/zones", zone_body)
+        except Exception as e:
+            logger.warning("set_led_zone failed: %s", e)
+
     def query_endstop(self, node, endstop):
         try:
             data = self._get(f"/api/nodes/{node}/endstops/{endstop}")
@@ -105,43 +109,14 @@ class KlippylinkRouter:
             logger.warning("query_endstop failed: %s", e)
             return None
 
-    # ── WebSocket event stream (background thread) ────────────────────────────
-
-    def _start_ws(self):
+    def set_heater(self, node, target_temp, kp, ki, kd):
         try:
-            import websocket  # pip install websocket-client
-            ws_url = f"ws://{self.host}:{self.port}/ws/events"
-            self._ws = websocket.WebSocketApp(
-                ws_url,
-                on_message=self._on_ws_message,
-                on_error=lambda ws, e: logger.warning("WS error: %s", e),
-            )
-            self._ws_thread = threading.Thread(
-                target=self._ws.run_forever, daemon=True)
-            self._ws_thread.start()
-            logger.info("KlippyLink WS event stream connected")
-        except ImportError:
-            logger.warning("websocket-client not installed; "
-                           "endstop events will be polled only")
+            self._post(f"/api/nodes/{node}/heater/set", {
+                "target_temp": target_temp,
+                "kp": kp, "ki": ki, "kd": kd,
+            })
         except Exception as e:
-            logger.warning("WS connect failed: %s", e)
-
-    def _stop_ws(self):
-        if self._ws:
-            self._ws.close()
-            self._ws = None
-
-    def _on_ws_message(self, ws, raw):
-        try:
-            ev = json.loads(raw)
-            evt_type = ev.get("event")
-            if evt_type == "endstop":
-                self.printer.send_event(
-                    "klippylink:endstop_change",
-                    ev.get("node"), ev.get("idx"), ev.get("triggered"),
-                )
-        except Exception as e:
-            logger.debug("WS message parse error: %s", e)
+            logger.warning("set_heater failed: %s", e)
 
 
 def load_config_prefix_klippylink(config):
@@ -161,7 +136,7 @@ class KlippylinkNeopixel:
 
         gcode = self.printer.lookup_object('gcode')
         gcode.register_command(
-            f'SET_KLIPPYLINK_LED',
+            'SET_KLIPPYLINK_LED',
             self.cmd_SET_KLIPPYLINK_LED,
             desc=self.cmd_SET_KLIPPYLINK_LED_help,
         )
@@ -176,7 +151,6 @@ class KlippylinkNeopixel:
         index  = gcmd.get_int('INDEX', -1)
         index  = None if index < 0 else index
 
-        # Resolve which object to use (support multiple strips via STRIP= arg)
         try:
             neopixel_obj = self.printer.lookup_object(
                 f'klippylink_neopixel {strip}')
@@ -218,9 +192,6 @@ class KlippylinkEndstop:
 
         self.printer.register_event_handler("klippy:connect",
                                              self._start_polling)
-        # Also listen for push events from the WS stream
-        self.printer.register_event_handler("klippylink:endstop_change",
-                                             self._on_endstop_change)
 
     def _start_polling(self):
         self._timer = self.reactor.register_timer(
@@ -235,11 +206,6 @@ class KlippylinkEndstop:
         except Exception as e:
             logger.debug("Endstop poll error: %s", e)
         return eventtime + POLL_INTERVAL_S
-
-    def _on_endstop_change(self, node, idx, triggered):
-        # WS push events update state immediately (no poll lag)
-        if node == self.node_name:
-            self._triggered = triggered
 
     def cmd_QUERY_KLIPPYLINK_ENDSTOP(self, gcmd):
         name = gcmd.get('ENDSTOP', self.name)
@@ -264,6 +230,69 @@ def load_config_prefix_klippylink_endstop(config):
     return KlippylinkEndstop(config)
 
 
+# ── Heater ────────────────────────────────────────────────────────────────────
+
+class KlippylinkHeater:
+    """
+    Virtual heater sensor backed by a KlipLink node's PID heater.
+    Reports temperature read from HEATER_STATE notifications (polled via API).
+    """
+
+    def __init__(self, config):
+        self.printer     = config.get_printer()
+        self.reactor     = self.printer.get_reactor()
+        self.name        = config.get_name().split()[-1]
+        self.router_name = config.get('router')
+        self.node_name   = config.get('node')
+        self.target_temp = config.getfloat('target_temp', 0.0)
+        self.kp          = config.getfloat('kp', 1.0)
+        self.ki          = config.getfloat('ki', 0.1)
+        self.kd          = config.getfloat('kd', 0.01)
+        self._temp       = 0.0
+        self._duty       = 0
+
+        self.printer.register_event_handler("klippy:connect",
+                                             self._handle_connect)
+
+    def _handle_connect(self):
+        router = self.printer.lookup_object(f'klippylink {self.router_name}')
+        if self.target_temp > 0:
+            router.set_heater(self.node_name, self.target_temp,
+                              self.kp, self.ki, self.kd)
+        self.reactor.register_timer(self._poll_status, self.reactor.NOW)
+
+    def _poll_status(self, eventtime):
+        try:
+            router = self.printer.lookup_object(f'klippylink {self.router_name}')
+            data = router._get(f"/api/nodes/{self.node_name}/status")
+            caps = data.get("capabilities", {})
+            self._temp = caps.get("temp_current", self._temp)
+            self._duty = caps.get("duty", self._duty)
+        except Exception as e:
+            logger.debug("Heater poll error: %s", e)
+        return eventtime + 0.5
+
+    def set_temp(self, degrees):
+        self.target_temp = degrees
+        try:
+            router = self.printer.lookup_object(f'klippylink {self.router_name}')
+            router.set_heater(self.node_name, degrees,
+                              self.kp, self.ki, self.kd)
+        except Exception as e:
+            logger.warning("set_temp failed: %s", e)
+
+    def get_status(self, eventtime):
+        return {
+            "temperature": self._temp,
+            "target":      self.target_temp,
+            "duty":        self._duty,
+        }
+
+
+def load_config_prefix_klippylink_heater(config):
+    return KlippylinkHeater(config)
+
+
 # ── Klipper module entry points ───────────────────────────────────────────────
 
 def load_config(config):
@@ -273,9 +302,10 @@ def load_config(config):
 def load_config_prefix(config):
     section = config.get_name().split()[0]
     dispatch = {
-        "klippylink":          KlippylinkRouter,
+        "klippylink":         KlippylinkRouter,
         "klippylink_neopixel": KlippylinkNeopixel,
         "klippylink_endstop":  KlippylinkEndstop,
+        "klippylink_heater":   KlippylinkHeater,
     }
     cls = dispatch.get(section)
     if cls is None:
