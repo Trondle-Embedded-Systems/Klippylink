@@ -1,6 +1,7 @@
 #include "gatt_server.h"
 #include "klip_protocol.h"
 #include "neopixel.h"
+#include "led_effects.h"
 #include "endstop.h"
 #include "ota_handler.h"
 #include "esp_log.h"
@@ -188,6 +189,26 @@ static void dispatch_packet(const klip_packet_t *pkt)
             klip_neopixel_set_range_t *p = (klip_neopixel_set_range_t *)pkt->payload;
             neopixel_set_range(0, p->start, p->count, p->r, p->g, p->b);
         }
+        break;
+    case KLIPCMD_LED_ZONE_SET:
+        if (pkt->length >= sizeof(klip_led_zone_t)) {
+            const klip_led_zone_t *z = (const klip_led_zone_t *)pkt->payload;
+            led_zone_cfg_t cfg = {
+                .strip_idx  = z->strip_idx,
+                .start      = z->start,
+                .count      = z->count,
+                .effect     = (led_effect_id_t)z->effect,
+                .r  = z->r,  .g  = z->g,  .b  = z->b,
+                .r2 = z->r2, .g2 = z->g2, .b2 = z->b2,
+                .brightness = z->brightness,
+                .speed      = z->speed,
+            };
+            led_effects_set_zone(z->zone_id, &cfg);
+        }
+        break;
+    case KLIPCMD_LED_ZONE_CLR:
+        if (pkt->length >= 1)
+            led_effects_clear_zone(pkt->payload[0]);
         break;
     case KLIPCMD_ENDSTOP_QUERY:
         if (pkt->length >= 1) {

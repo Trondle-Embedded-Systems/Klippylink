@@ -94,6 +94,20 @@ esp_err_t neopixel_clear(int strip_idx)
     return led_strip_clear(s_strips[strip_idx].handle);
 }
 
+esp_err_t neopixel_set_pixel(int strip_idx, uint32_t led_idx, uint8_t r, uint8_t g, uint8_t b)
+{
+    if (strip_idx < 0 || strip_idx >= s_count) return ESP_ERR_INVALID_ARG;
+    strip_t *s = &s_strips[strip_idx];
+    if (led_idx >= s->count) return ESP_ERR_INVALID_ARG;
+    return led_strip_set_pixel(s->handle, led_idx, r, g, b);
+}
+
+esp_err_t neopixel_flush(int strip_idx)
+{
+    if (strip_idx < 0 || strip_idx >= s_count) return ESP_ERR_INVALID_ARG;
+    return led_strip_refresh(s_strips[strip_idx].handle);
+}
+
 uint32_t neopixel_count(int strip_idx)
 {
     if (strip_idx < 0 || strip_idx >= s_count) return 0;

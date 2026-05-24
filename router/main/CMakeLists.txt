@@ -6,6 +6,8 @@ idf_component_register(
         "http_server.c"
         "node_registry.c"
         "ota_handler.c"
+    EMBED_FILES
+        "web_ui.html"
     INCLUDE_DIRS
         "."
         "../../shared/protocol"

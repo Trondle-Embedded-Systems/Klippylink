@@ -4,6 +4,7 @@
 
 #include "config_loader.h"
 #include "neopixel.h"
+#include "led_effects.h"
 #include "endstop.h"
 #include "gatt_server.h"
 
@@ -43,6 +44,10 @@ void app_main(void)
                      s_cfg.neopixels[i].name, esp_err_to_name(ret));
         }
     }
+
+    /* Start effects engine (must be after neopixel_init calls) */
+    if (s_cfg.neopixel_count > 0)
+        ESP_ERROR_CHECK(led_effects_init());
 
     /* Initialise endstops */
     for (int i = 0; i < s_cfg.endstop_count; i++) {

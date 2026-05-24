@@ -24,5 +24,11 @@ esp_err_t neopixel_set_range(int strip_idx, uint32_t start, uint32_t count,
 /** Turn all pixels off. */
 esp_err_t neopixel_clear(int strip_idx);
 
+/** Set a single pixel without triggering an RMT refresh. */
+esp_err_t neopixel_set_pixel(int strip_idx, uint32_t led_idx, uint8_t r, uint8_t g, uint8_t b);
+
+/** Flush all pending pixel writes to the strip (RMT transmission). */
+esp_err_t neopixel_flush(int strip_idx);
+
 /** Return how many LEDs are on a strip. */
 uint32_t neopixel_count(int strip_idx);

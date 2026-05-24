@@ -5,6 +5,7 @@ idf_component_register(
         "endstop.c"
         "config_loader.c"
         "gatt_server.c"
+        "led_effects.c"
         "ota_handler.c"
     INCLUDE_DIRS
         "."

@@ -32,6 +32,13 @@ typedef enum {
     KLIPCMD_NEOPIXEL_SET_ALL    = 0x51,
     KLIPCMD_NEOPIXEL_SET_RANGE  = 0x52,
 
+    /* LED zone effects (zone = contiguous range on one strip running an effect)
+     * LED_ZONE_SET  payload: klip_led_zone_t
+     * LED_ZONE_CLR  payload: [zone_id u8]
+     */
+    KLIPCMD_LED_ZONE_SET        = 0x53,
+    KLIPCMD_LED_ZONE_CLR        = 0x54,
+
     /* Endstop
      * QUERY     payload: [endstop_idx u8]
      * STATE     payload: [endstop_idx u8, triggered u8]
@@ -94,6 +101,27 @@ typedef struct __attribute__((packed)) {
     uint8_t count;
     uint8_t r, g, b;
 } klip_neopixel_set_range_t;
+
+/* LED zone effect IDs (must match led_effect_id_t in led_effects.h) */
+#define KLIP_EFFECT_SOLID    0
+#define KLIP_EFFECT_BLINK    1
+#define KLIP_EFFECT_BREATHE  2
+#define KLIP_EFFECT_RAINBOW  3
+#define KLIP_EFFECT_CHASE    4
+#define KLIP_EFFECT_WIPE     5
+#define KLIP_EFFECT_TWINKLE  6
+
+typedef struct __attribute__((packed)) {
+    uint8_t zone_id;
+    uint8_t strip_idx;
+    uint8_t start;
+    uint8_t count;
+    uint8_t effect;
+    uint8_t r,  g,  b;   /* primary color   */
+    uint8_t r2, g2, b2;  /* secondary color */
+    uint8_t brightness;  /* 0–255           */
+    uint8_t speed;       /* 0–255           */
+} klip_led_zone_t;
 
 typedef struct __attribute__((packed)) {
     uint8_t endstop_idx;
