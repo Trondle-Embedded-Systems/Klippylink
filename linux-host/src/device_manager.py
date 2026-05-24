@@ -10,12 +10,36 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
+class LedZone:
+    zone_id: int
+    strip: int
+    start: int
+    count: int
+    effect: int
+    color: list
+    color2: list
+    brightness: int
+    speed: int
+    name: str = ""
+
+
+@dataclass
+class RadioSettings:
+    power: int = 4            # 0–7
+    channel: int = 80         # BLE channel (0–79)
+    conn_interval_ms: int = 20
+    telemetry_enabled: bool = True
+
+
+@dataclass
 class NodeInfo:
     node_id: int
     name: str
     connected: bool = True
     capabilities: dict = field(default_factory=dict)
     last_seen: float = field(default_factory=time.monotonic)
+    led_zones: dict = field(default_factory=dict)   # zone_id → LedZone
+    radio: RadioSettings = field(default_factory=RadioSettings)
 
 
 class DeviceManager:
@@ -53,6 +77,14 @@ class DeviceManager:
 
         elif node_id in self._nodes:
             self._nodes[node_id].last_seen = time.monotonic()
+
+    def set_zone(self, node_id: int, zone: LedZone) -> None:
+        if node_id in self._nodes:
+            self._nodes[node_id].led_zones[zone.zone_id] = zone
+
+    def clear_zone(self, node_id: int, zone_id: int) -> None:
+        if node_id in self._nodes:
+            self._nodes[node_id].led_zones.pop(zone_id, None)
 
     def list_nodes(self) -> list[NodeInfo]:
         return list(self._nodes.values())

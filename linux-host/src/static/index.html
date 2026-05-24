@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Klippylink</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="header">
+    <div class="header-logo">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+        <path d="M2 17l10 5 10-5"/>
+        <path d="M2 12l10 5 10-5"/>
+      </svg>
+      <span>Klippylink</span>
+    </div>
+    <div class="header-status">
+      <span class="status-dot" id="conn-dot"></span>
+      <span id="conn-label">Connecting…</span>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="sidebar-title">Nodes</div>
+      <ul class="node-list" id="node-list">
+        <li class="node-item node-empty">No nodes connected</li>
+      </ul>
+    </aside>
+
+    <main class="main">
+      <div class="no-node-msg" id="no-node-msg">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M8 12h8M12 8v8"/>
+        </svg>
+        <p>Select a node from the sidebar to configure it.</p>
+      </div>
+
+      <div class="node-content" id="node-content" hidden>
+        <div class="tabs" role="tablist">
+          <button class="tab active" data-tab="zones" role="tab">LED Zones</button>
+          <button class="tab" data-tab="effects" role="tab">Effects</button>
+          <button class="tab" data-tab="radio" role="tab">Radio</button>
+        </div>
+
+        <!-- ── LED Zones tab ───────────────────────────────────────────── -->
+        <section class="tab-panel active" id="panel-zones">
+          <div class="panel-header">
+            <h2>LED Zones</h2>
+            <p class="muted">Drag across LEDs to create a named zone. Zones can be triggered from Klipper macros.</p>
+          </div>
+
+          <div id="strips-container"></div>
+
+          <div class="zone-list-header">
+            <h3>Configured zones</h3>
+            <button class="btn btn-ghost btn-sm" id="btn-apply-all">Apply all</button>
+          </div>
+          <div id="zone-list" class="zone-list">
+            <p class="muted zone-empty">No zones configured yet. Drag across the LEDs above to create one.</p>
+          </div>
+        </section>
+
+        <!-- ── Effects tab ────────────────────────────────────────────── -->
+        <section class="tab-panel" id="panel-effects">
+          <div class="panel-header">
+            <h2>Effects</h2>
+            <p class="muted">Assign animated effects to zones. The timeline shows the playback order.</p>
+          </div>
+          <div id="timeline-container">
+            <div class="timeline-empty muted" id="timeline-empty">
+              Configure zones in the LED Zones tab first.
+            </div>
+            <div class="timeline" id="timeline" hidden></div>
+          </div>
+        </section>
+
+        <!-- ── Radio tab ──────────────────────────────────────────────── -->
+        <section class="tab-panel" id="panel-radio">
+          <div class="panel-header">
+            <h2>Radio Settings</h2>
+            <p class="muted">Adjust BLE transmit power, channel, and connection parameters.</p>
+          </div>
+
+          <div class="settings-grid">
+            <div class="setting-group">
+              <label class="setting-label" for="radio-power">TX Power</label>
+              <div class="range-row">
+                <input type="range" id="radio-power" min="0" max="7" step="1" value="4">
+                <span class="range-val" id="radio-power-val"></span>
+              </div>
+              <div class="range-labels">
+                <span>−20 dBm</span><span>+9 dBm</span>
+              </div>
+            </div>
+
+            <div class="setting-group">
+              <label class="setting-label" for="radio-channel">BLE Channel (0–79)</label>
+              <input type="number" class="input" id="radio-channel" min="0" max="79" value="80">
+            </div>
+
+            <div class="setting-group">
+              <label class="setting-label" for="radio-interval">Connection Interval (ms)</label>
+              <input type="number" class="input" id="radio-interval" min="7" max="4000" value="20">
+            </div>
+
+            <div class="setting-group">
+              <label class="setting-label">Telemetry</label>
+              <label class="toggle">
+                <input type="checkbox" id="radio-telemetry" checked>
+                <span class="toggle-track"></span>
+                <span class="toggle-label">Send periodic RSSI &amp; status reports</span>
+              </label>
+            </div>
+
+            <div class="setting-actions">
+              <button class="btn btn-primary" id="btn-radio-save">Apply settings</button>
+              <span class="save-status" id="radio-save-status"></span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <!-- ── Zone editor dialog ────────────────────────────────────────────── -->
+  <dialog class="dialog" id="zone-dialog">
+    <form method="dialog" class="dialog-form" id="zone-form">
+      <h3 class="dialog-title" id="dialog-title">Configure Zone</h3>
+
+      <input type="hidden" id="z-zone-id">
+      <input type="hidden" id="z-strip">
+      <input type="hidden" id="z-start">
+      <input type="hidden" id="z-count">
+
+      <div class="form-row">
+        <label class="form-label" for="z-name">Zone name</label>
+        <input type="text" class="input" id="z-name" placeholder="e.g. toolhead_status" required>
+      </div>
+
+      <div class="form-row form-row-2">
+        <div>
+          <label class="form-label" for="z-color1">Primary color</label>
+          <input type="color" class="color-pick" id="z-color1" value="#00bfff">
+        </div>
+        <div>
+          <label class="form-label" for="z-color2">Secondary color</label>
+          <input type="color" class="color-pick" id="z-color2" value="#000000">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label" for="z-effect">Effect</label>
+        <select class="input" id="z-effect">
+          <option value="0">Static</option>
+          <option value="1">Flash / Blink</option>
+          <option value="2">Rainbow</option>
+          <option value="3">Sweep / Chase</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label" for="z-brightness">
+          Brightness <span class="range-val" id="z-brightness-val">255</span>
+        </label>
+        <input type="range" id="z-brightness" min="0" max="255" value="255">
+      </div>
+
+      <div class="form-row">
+        <label class="form-label" for="z-speed">
+          Speed <span class="range-val" id="z-speed-val">128</span>
+        </label>
+        <input type="range" id="z-speed" min="1" max="255" value="128">
+      </div>
+
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" id="btn-zone-cancel">Cancel</button>
+        <button type="button" class="btn btn-danger" id="btn-zone-delete" hidden>Delete</button>
+        <button type="button" class="btn btn-primary" id="btn-zone-save">Save &amp; Apply</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

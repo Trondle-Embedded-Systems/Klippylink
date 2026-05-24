@@ -35,8 +35,18 @@ class KlipCommand(IntEnum):
     WIFI_STATUS        = 0xA1
     HEATER_SET         = 0xB0
     HEATER_STATE       = 0xB1
+    RADIO_GET          = 0x90
+    RADIO_SET          = 0x91
     HEARTBEAT          = 0xC0
     ERROR              = 0xFF
+
+
+# LED effect identifiers (match node firmware neopixel.c)
+class LedEffect(IntEnum):
+    STATIC  = 0x00
+    FLASH   = 0x01
+    RAINBOW = 0x02
+    SWEEP   = 0x03
 
 
 OTA_OK          = 0x00
@@ -152,3 +162,22 @@ def decode_wifi_status(payload: bytes):
     if ip == (0, 0, 0, 0):
         return None
     return f"{ip[0]}.{ip[1]}.{ip[2]}.{ip[3]}"
+
+
+def make_radio_set(power: int, channel: int, conn_interval_ms: int,
+                   telemetry: bool) -> KlipPacket:
+    return KlipPacket(KlipCommand.RADIO_SET,
+                      pack("BBHB", power, channel, conn_interval_ms,
+                           int(telemetry)))
+
+
+def make_radio_get() -> KlipPacket:
+    return KlipPacket(KlipCommand.RADIO_GET)
+
+
+def decode_radio_state(payload: bytes):
+    """Returns (power, channel, conn_interval_ms, telemetry) or None."""
+    if len(payload) < 5:
+        return None
+    power, channel, conn_interval_ms, telemetry = unpack("<BBHB", payload[:5])
+    return power, channel, conn_interval_ms, bool(telemetry)

@@ -1,17 +1,20 @@
 import asyncio
 import logging
+from pathlib import Path
 from struct import pack
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from shared.protocol.klip_protocol import (
     KlipCommand, KlipPacket,
     make_wifi_enable, make_heater_set,
+    make_radio_set, make_radio_get,
 )
-from device_manager import DeviceManager
+from device_manager import DeviceManager, LedZone, RadioSettings
 from serial_transport import SerialTransport
 from ota_handler import OtaHandler
 
@@ -32,6 +35,11 @@ def init(transport: SerialTransport,
     _transport  = transport
     _device_mgr = device_mgr
     _ota_handler = ota_handler
+
+    static_dir = Path(__file__).parent / "static"
+    if static_dir.is_dir():
+        app.mount("/", StaticFiles(directory=str(static_dir), html=True),
+                  name="static")
 
 
 def _get_node(name: str):
@@ -90,6 +98,27 @@ class LedZoneBody(BaseModel):
     color2:     list[int]   # [r, g, b]
     brightness: int = 255
     speed:      int = 128
+    name:       str = ""
+
+
+@app.get("/api/nodes/{name}/leds/zones")
+def list_led_zones(name: str) -> list[dict]:
+    node = _get_node(name)
+    return [
+        {
+            "zone_id":    z.zone_id,
+            "strip":      z.strip,
+            "start":      z.start,
+            "count":      z.count,
+            "effect":     z.effect,
+            "color":      z.color,
+            "color2":     z.color2,
+            "brightness": z.brightness,
+            "speed":      z.speed,
+            "name":       z.name,
+        }
+        for z in node.led_zones.values()
+    ]
 
 
 @app.post("/api/nodes/{name}/leds/zones")
@@ -102,6 +131,13 @@ def set_led_zone(name: str, body: LedZoneBody) -> dict:
                    body.brightness) + bytes([body.speed])
     _transport.send_packet(node.node_id,
                            KlipPacket(KlipCommand.LED_ZONE_SET, payload))
+    _device_mgr.set_zone(node.node_id, LedZone(
+        zone_id=body.zone_id, strip=body.strip, start=body.start,
+        count=body.count, effect=body.effect,
+        color=body.color, color2=body.color2,
+        brightness=body.brightness, speed=body.speed,
+        name=body.name,
+    ))
     return {"ok": True}
 
 
@@ -111,6 +147,43 @@ def clear_led_zone(name: str, zone_id: int) -> dict:
     _transport.send_packet(node.node_id,
                            KlipPacket(KlipCommand.LED_ZONE_CLR,
                                       bytes([zone_id])))
+    _device_mgr.clear_zone(node.node_id, zone_id)
+    return {"ok": True}
+
+
+# ── Radio settings ─────────────────────────────────────────────────────────────
+
+class RadioBody(BaseModel):
+    power:             int  = 4
+    channel:           int  = 80
+    conn_interval_ms:  int  = 20
+    telemetry_enabled: bool = True
+
+
+@app.get("/api/nodes/{name}/radio")
+def get_radio(name: str) -> dict:
+    node = _get_node(name)
+    r = node.radio
+    return {
+        "power":             r.power,
+        "channel":           r.channel,
+        "conn_interval_ms":  r.conn_interval_ms,
+        "telemetry_enabled": r.telemetry_enabled,
+    }
+
+
+@app.put("/api/nodes/{name}/radio")
+def set_radio(name: str, body: RadioBody) -> dict:
+    node = _get_node(name)
+    node.radio = RadioSettings(
+        power=body.power,
+        channel=body.channel,
+        conn_interval_ms=body.conn_interval_ms,
+        telemetry_enabled=body.telemetry_enabled,
+    )
+    pkt = make_radio_set(body.power, body.channel,
+                         body.conn_interval_ms, body.telemetry_enabled)
+    _transport.send_packet(node.node_id, pkt)
     return {"ok": True}
 
 
