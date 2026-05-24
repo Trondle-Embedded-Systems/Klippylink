@@ -349,7 +349,19 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event,
 {
     switch (event) {
     case ESP_GAP_BLE_ADV_DATA_SET_COMPLETE_EVT:
+        if (param->adv_data_cmpl.status != ESP_BT_STATUS_SUCCESS) {
+            ESP_LOGE(TAG, "Adv data set failed: 0x%X", param->adv_data_cmpl.status);
+            break;
+        }
+        ESP_LOGI(TAG, "Adv data set OK, starting advertising...");
         esp_ble_gap_start_advertising(&s_adv_params);
+        break;
+    case ESP_GAP_BLE_START_ADV_COMPLETE_EVT:
+        if (param->adv_start_cmpl.status != ESP_BT_STATUS_SUCCESS) {
+            ESP_LOGE(TAG, "Adv start failed: 0x%X", param->adv_start_cmpl.status);
+        } else {
+            ESP_LOGI(TAG, "Advertising started successfully");
+        }
         break;
     default:
         break;
@@ -382,9 +394,14 @@ esp_err_t gatt_server_init(const device_cfg_t *cfg)
     s_adv_data.set_scan_rsp        = false;
     s_adv_data.include_name        = true;
     s_adv_data.include_txpower     = false;
+    s_adv_data.flag                = ESP_BLE_ADV_FLAG_GEN_DISC
+                                   | ESP_BLE_ADV_FLAG_BREDR_UNSUP_TYP;
     s_adv_data.service_uuid_len    = sizeof(service_uuid);
     s_adv_data.p_service_uuid      = (uint8_t *)&service_uuid;
-    esp_ble_gap_config_adv_data(&s_adv_data);
+    esp_err_t adv_ret = esp_ble_gap_config_adv_data(&s_adv_data);
+    if (adv_ret != ESP_OK) {
+        ESP_LOGE(TAG, "Adv data config failed: %s", esp_err_to_name(adv_ret));
+    }
 
     ESP_LOGI(TAG, "GATT server init complete, advertising as '%s'", cfg->device_name);
     return ESP_OK;
