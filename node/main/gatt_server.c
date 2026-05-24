@@ -299,6 +299,46 @@ static void gatts_event_handler(esp_gatts_cb_event_t event,
         ESP_LOGI(TAG, "GATT attr table created, service started");
         break;
 
+    case ESP_GATTS_START_EVT:
+        if (param->start.status != ESP_GATT_OK) {
+            ESP_LOGE(TAG, "Service start failed: 0x%X", param->start.status);
+            break;
+        }
+        ESP_LOGI(TAG, "Service started, configuring advertising...");
+        {
+            const char *dev_name = s_cfg->device_name;
+            uint8_t name_len = (uint8_t)strlen(dev_name);
+            uint8_t raw_adv[31];
+            uint8_t pos = 0;
+
+            raw_adv[pos++] = 0x02;
+            raw_adv[pos++] = 0x01;
+            raw_adv[pos++] = ESP_BLE_ADV_FLAG_GEN_DISC
+                            | ESP_BLE_ADV_FLAG_BREDR_NOT_SPT;
+
+            uint16_t svc_uuid = SVC_UUID;
+            raw_adv[pos++] = 1 + sizeof(svc_uuid);
+            raw_adv[pos++] = 0x03;
+            memcpy(&raw_adv[pos], &svc_uuid, sizeof(svc_uuid));
+            pos += sizeof(svc_uuid);
+
+            if (pos + 2 + name_len <= sizeof(raw_adv)) {
+                raw_adv[pos++] = 1 + name_len;
+                raw_adv[pos++] = 0x09;
+                memcpy(&raw_adv[pos], dev_name, name_len);
+                pos += name_len;
+            }
+
+            esp_err_t ret = esp_ble_gap_config_adv_data_raw(raw_adv, pos);
+            if (ret != ESP_OK) {
+                ESP_LOGE(TAG, "Raw adv config failed: %s", esp_err_to_name(ret));
+            } else {
+                ESP_LOGI(TAG, "Adv data configured (%d bytes), starting adv...", pos);
+                esp_ble_gap_start_advertising(&s_adv_params);
+            }
+        }
+        break;
+
     case ESP_GATTS_WRITE_EVT: {
         if (param->write.handle == s_handles[IDX_TEL_CCCD]) {
             uint16_t cccd;
@@ -380,35 +420,6 @@ esp_err_t gatt_server_init(const device_cfg_t *cfg)
 
     /* Set device name for advertising */
     esp_ble_gap_set_device_name(cfg->device_name);
-
-    /* Build raw advertising data to avoid ESP_ERR_INVALID_ARG from
-     * esp_ble_gap_config_adv_data structured API. */
-    const char *dev_name = cfg->device_name;
-    uint8_t name_len = (uint8_t)strlen(dev_name);
-    uint8_t raw_adv[31];
-    uint8_t pos = 0;
-
-    raw_adv[pos++] = 0x02;
-    raw_adv[pos++] = 0x01;
-    raw_adv[pos++] = ESP_BLE_ADV_FLAG_GEN_DISC | ESP_BLE_ADV_FLAG_BREDR_NOT_SPT;
-
-    uint16_t svc_uuid = SVC_UUID;
-    raw_adv[pos++] = 1 + sizeof(svc_uuid);
-    raw_adv[pos++] = 0x03;
-    memcpy(&raw_adv[pos], &svc_uuid, sizeof(svc_uuid));
-    pos += sizeof(svc_uuid);
-
-    if (pos + 2 + name_len <= sizeof(raw_adv)) {
-        raw_adv[pos++] = 1 + name_len;
-        raw_adv[pos++] = 0x09;
-        memcpy(&raw_adv[pos], dev_name, name_len);
-        pos += name_len;
-    }
-
-    esp_err_t adv_ret = esp_ble_gap_config_adv_data_raw(raw_adv, pos);
-    if (adv_ret != ESP_OK) {
-        ESP_LOGE(TAG, "Raw adv data config failed: %s", esp_err_to_name(adv_ret));
-    }
 
     ESP_LOGI(TAG, "GATT server init complete, advertising as '%s'", cfg->device_name);
     return ESP_OK;
