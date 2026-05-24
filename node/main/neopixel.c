@@ -23,7 +23,6 @@ esp_err_t neopixel_init(uint8_t gpio_num, uint32_t led_count, int *strip_idx_out
     led_strip_config_t strip_cfg = {
         .strip_gpio_num   = gpio_num,
         .max_leds         = led_count,
-        .led_pixel_format = LED_PIXEL_FORMAT_GRB,
         .led_model        = LED_MODEL_WS2812,
         .flags.invert_out = false,
     };

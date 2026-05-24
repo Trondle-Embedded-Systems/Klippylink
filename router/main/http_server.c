@@ -300,7 +300,7 @@ static esp_err_t handle_led_zone_clr(httpd_req_t *req)
     return ret;
 }
 
-/* ── Dispatch POST /api/nodes/* ─────────────────────────────────────────── */
+/* ── Dispatch POST /api/nodes/[id]/... ──────────────────────────────────── */
 static esp_err_t handle_nodes_post(httpd_req_t *req)
 {
     if (strstr(req->uri, "/leds/zones"))
