@@ -13,6 +13,15 @@
         { "path": "firmware/router/esp32c3/ota_data_initial.bin","offset": 57344 },
         { "path": "firmware/router/esp32c3/klippylink-router.bin","offset": 65536 }
       ]
+    },
+    {
+      "chipFamily": "ESP32-S3",
+      "parts": [
+        { "path": "firmware/router/esp32s3/bootloader.bin",      "offset": 0 },
+        { "path": "firmware/router/esp32s3/partition-table.bin", "offset": 32768 },
+        { "path": "firmware/router/esp32s3/ota_data_initial.bin","offset": 57344 },
+        { "path": "firmware/router/esp32s3/klippylink-router.bin","offset": 65536 }
+      ]
     }
   ]
 }

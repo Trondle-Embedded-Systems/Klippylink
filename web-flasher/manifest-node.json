@@ -13,6 +13,15 @@
         { "path": "firmware/node/esp32s3/ota_data_initial.bin","offset": 57344 },
         { "path": "firmware/node/esp32s3/klippylink-node.bin", "offset": 65536 }
       ]
+    },
+    {
+      "chipFamily": "ESP32-C3",
+      "parts": [
+        { "path": "firmware/node/esp32c3/bootloader.bin",      "offset": 0 },
+        { "path": "firmware/node/esp32c3/partition-table.bin", "offset": 32768 },
+        { "path": "firmware/node/esp32c3/ota_data_initial.bin","offset": 57344 },
+        { "path": "firmware/node/esp32c3/klippylink-node.bin", "offset": 65536 }
+      ]
     }
   ]
 }
