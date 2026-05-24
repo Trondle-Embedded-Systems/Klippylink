@@ -40,6 +40,7 @@ static gattc_conn_t s_conns[MAX_CONNS];
 static int          s_conn_count = 0;
 
 static ble_response_cb_t s_response_cb = NULL;
+static uint16_t s_gattc_if = 0;
 
 /* ── helpers ─────────────────────────────────────────────────────────────── */
 static gattc_conn_t *find_conn(uint16_t conn_id)
@@ -90,8 +91,9 @@ static void gattc_event_handler(esp_gattc_cb_event_t event,
 {
     switch (event) {
     case ESP_GATTC_REG_EVT:
+        s_gattc_if = gattc_if;
         esp_ble_gap_set_scan_params(&s_scan_params);
-        ESP_LOGI(TAG, "GATTC registered, starting scan...");
+        ESP_LOGI(TAG, "GATTC registered (if=%d), starting scan...", gattc_if);
         break;
 
     case ESP_GATTC_CONNECT_EVT: {
@@ -304,7 +306,7 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event,
                 if (uuid == KLIP_SVC_UUID) {
                     ESP_LOGI(TAG, "Found KlipLink node, connecting...");
                     esp_ble_gap_stop_scanning();
-                    esp_ble_gattc_open(PROFILE_A_APP_ID,
+                    esp_ble_gattc_open(s_gattc_if,
                                        param->scan_rst.bda,
                                        param->scan_rst.ble_addr_type,
                                        true);
