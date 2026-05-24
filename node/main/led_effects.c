@@ -4,7 +4,7 @@
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 #include "esp_log.h"
-#include "esp_random.h"
+#include <stdlib.h>
 #include <string.h>
 #include <math.h>
 
@@ -122,9 +122,9 @@ static void render_zone(zone_state_t *z)
 
     case EFFECT_WIPE: {
         uint32_t cycle_len = (uint32_t)c->count * 2;
-        uint8_t  pos = (uint8_t)((z->tick / period) % cycle_len);
+        uint16_t pos = (uint16_t)((z->tick / period) % cycle_len);
         for (uint8_t i = 0; i < c->count; i++) {
-            bool lit = (pos < c->count) ? (i <= pos) : (i > pos - c->count);
+            bool lit = (pos < c->count) ? (i <= pos) : (i > (uint16_t)(pos - c->count));
             if (lit)
                 neopixel_set_pixel(c->strip_idx, c->start + i,
                                    dim(c->r, bri), dim(c->g, bri), dim(c->b, bri));
@@ -137,8 +137,8 @@ static void render_zone(zone_state_t *z)
 
     case EFFECT_TWINKLE:
         if (z->tick % period == 0) {
-            uint8_t idx = (uint8_t)(esp_random() % c->count);
-            if (esp_random() & 1)
+            uint8_t idx = (uint8_t)((uint32_t)rand() % c->count);
+            if (rand() & 1)
                 neopixel_set_pixel(c->strip_idx, c->start + idx,
                                    dim(c->r, bri), dim(c->g, bri), dim(c->b, bri));
             else

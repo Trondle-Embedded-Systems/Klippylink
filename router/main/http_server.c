@@ -318,16 +318,6 @@ static esp_err_t handle_root(httpd_req_t *req)
     return ESP_OK;
 }
 
-/* ── OPTIONS /* (CORS preflight) ────────────────────────────────────────── */
-static esp_err_t handle_options(httpd_req_t *req)
-{
-    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin",  "*");
-    httpd_resp_set_hdr(req, "Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
-    httpd_resp_set_hdr(req, "Access-Control-Allow-Headers", "Content-Type");
-    httpd_resp_send(req, NULL, 0);
-    return ESP_OK;
-}
-
 /* ── POST /api/wifi ─────────────────────────────────────────────────────── */
 static esp_err_t handle_wifi_config(httpd_req_t *req)
 {
@@ -400,7 +390,6 @@ void http_server_broadcast(const char *json)
 /* ── URI table (REST only — WS registered separately below) ─────────────── */
 static const httpd_uri_t s_uris[] = {
     {.uri = "/",             .method = HTTP_GET,    .handler = handle_root,         .user_ctx = NULL},
-    {.uri = "/*",            .method = HTTP_OPTIONS,.handler = handle_options,      .user_ctx = NULL},
     {.uri = "/api/info",     .method = HTTP_GET,    .handler = handle_info,         .user_ctx = NULL},
     {.uri = "/api/nodes",    .method = HTTP_GET,    .handler = handle_nodes,        .user_ctx = NULL},
     {.uri = "/api/nodes/*",  .method = HTTP_GET,    .handler = handle_endstops,     .user_ctx = NULL},
@@ -412,8 +401,9 @@ static const httpd_uri_t s_uris[] = {
 esp_err_t http_server_start(void)
 {
     httpd_config_t cfg = HTTPD_DEFAULT_CONFIG();
-    cfg.server_port    = SERVER_PORT;
-    cfg.uri_match_fn   = httpd_uri_match_wildcard;
+    cfg.server_port      = SERVER_PORT;
+    cfg.uri_match_fn     = httpd_uri_match_wildcard;
+    cfg.max_uri_handlers = 12;
     cfg.max_open_sockets = 8;
 
     esp_err_t ret = httpd_start(&s_server, &cfg);
