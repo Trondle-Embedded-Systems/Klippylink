@@ -1,5 +1,6 @@
 #include "endstop.h"
 #include "driver/gpio.h"
+#include "esp_attr.h"
 #include "esp_log.h"
 
 #define TAG "ENDSTOP"
@@ -14,7 +15,7 @@ static endstop_t s_endstops[ENDSTOP_MAX];
 static uint8_t   s_count = 0;
 static bool      s_isr_service_installed = false;
 
-static void IRAM_ATTR gpio_isr_handler(void *arg)
+static void IRAM_ATTR endstop_isr_handler(void *arg)
 {
     uint8_t idx = (uint8_t)(uintptr_t)arg;
     if (idx >= s_count) return;
@@ -54,7 +55,7 @@ esp_err_t endstop_init(uint8_t gpio_num, bool pull_up, bool active_low,
             gpio_install_isr_service(0);
             s_isr_service_installed = true;
         }
-        gpio_isr_handler_add(gpio_num, gpio_isr_handler, (void *)(uintptr_t)idx);
+        gpio_isr_handler_add(gpio_num, endstop_isr_handler, (void *)(uintptr_t)idx);
     }
 
     s_count++;
