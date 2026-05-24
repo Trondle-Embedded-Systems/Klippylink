@@ -15,64 +15,65 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # ── Build node firmware (ESP32-S3) ─────────────────────────────────────────
-  build-node:
+  # ── Build node firmware ────────────────────────────────────────────────────
+  # To add a new chip: duplicate this job, change 'target' and 'chip_slug'.
+  build-node-esp32s3:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build klippylink-node
+      - name: Build klippylink-node (esp32s3)
         uses: espressif/esp-idf-ci-action@v1
         with:
           esp_idf_version: v5.3.2
           target: esp32s3
-          path: esp32-s3
+          path: node
 
       - name: Collect node binaries
         run: |
-          mkdir -p _node
-          cp esp32-s3/build/bootloader/bootloader.bin          _node/node-bootloader.bin
-          cp esp32-s3/build/partition_table/partition-table.bin _node/node-partition-table.bin
-          cp esp32-s3/build/klippylink-node.bin                _node/klippylink-node.bin
-          # ota_data_initial.bin is only present when OTA partitions are configured
-          cp esp32-s3/build/ota_data_initial.bin               _node/node-ota_data_initial.bin 2>/dev/null || \
-            dd if=/dev/zero bs=8192 count=1 | tr '\000' '\377' > _node/node-ota_data_initial.bin
+          mkdir -p _node/esp32s3
+          cp node/build/bootloader/bootloader.bin          _node/esp32s3/bootloader.bin
+          cp node/build/partition_table/partition-table.bin _node/esp32s3/partition-table.bin
+          cp node/build/klippylink-node.bin                _node/esp32s3/klippylink-node.bin
+          cp node/build/ota_data_initial.bin               _node/esp32s3/ota_data_initial.bin 2>/dev/null || \
+            dd if=/dev/zero bs=8192 count=1 | tr '\000' '\377' > _node/esp32s3/ota_data_initial.bin
 
       - uses: actions/upload-artifact@v4
         with:
-          name: node-firmware
-          path: _node/
+          name: node-firmware-esp32s3
+          path: _node/esp32s3/
 
-  # ── Build router firmware (ESP32-C3) ───────────────────────────────────────
-  build-router:
+  # ── Build router firmware ──────────────────────────────────────────────────
+  # To add a new chip: duplicate this job, change 'target' and 'chip_slug'.
+  build-router-esp32c3:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build klippylink-router
+      - name: Build klippylink-router (esp32c3)
         uses: espressif/esp-idf-ci-action@v1
         with:
           esp_idf_version: v5.3.2
           target: esp32c3
-          path: esp32-c3
+          path: router
 
       - name: Collect router binaries
         run: |
-          mkdir -p _router
-          cp esp32-c3/build/bootloader/bootloader.bin            _router/router-bootloader.bin
-          cp esp32-c3/build/partition_table/partition-table.bin  _router/router-partition-table.bin
-          cp esp32-c3/build/klippylink-router.bin                _router/klippylink-router.bin
-          cp esp32-c3/build/ota_data_initial.bin                 _router/router-ota_data_initial.bin 2>/dev/null || \
-            dd if=/dev/zero bs=8192 count=1 | tr '\000' '\377' > _router/router-ota_data_initial.bin
+          mkdir -p _router/esp32c3
+          cp router/build/bootloader/bootloader.bin            _router/esp32c3/bootloader.bin
+          cp router/build/partition_table/partition-table.bin  _router/esp32c3/partition-table.bin
+          cp router/build/klippylink-router.bin                _router/esp32c3/klippylink-router.bin
+          cp router/build/ota_data_initial.bin                 _router/esp32c3/ota_data_initial.bin 2>/dev/null || \
+            dd if=/dev/zero bs=8192 count=1 | tr '\000' '\377' > _router/esp32c3/ota_data_initial.bin
 
       - uses: actions/upload-artifact@v4
         with:
-          name: router-firmware
-          path: _router/
+          name: router-firmware-esp32c3
+          path: _router/esp32c3/
 
   # ── Deploy to GitHub Pages ─────────────────────────────────────────────────
   deploy:
-    needs: [build-node, build-router]
+    needs: [build-node-esp32s3, build-router-esp32c3]
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -80,17 +81,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download node firmware
+      - name: Download node firmware (esp32s3)
         uses: actions/download-artifact@v4
         with:
-          name: node-firmware
-          path: web-flasher/firmware/
+          name: node-firmware-esp32s3
+          path: web-flasher/firmware/node/esp32s3/
 
-      - name: Download router firmware
+      - name: Download router firmware (esp32c3)
         uses: actions/download-artifact@v4
         with:
-          name: router-firmware
-          path: web-flasher/firmware/
+          name: router-firmware-esp32c3
+          path: web-flasher/firmware/router/esp32c3/
 
       - uses: actions/configure-pages@v5
 

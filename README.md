@@ -1,10 +1,13 @@
 # Klippylink
 
-Serial-to-BLE bridge: Linux host ⇄ ESP32-C3 dongle ⇄ ESP32-S3 peripheral.
+Serial-to-BLE bridge: Linux host ⇄ ESP32 router dongle ⇄ ESP32 node peripheral.
 
 ```
-Linux app ⇄ USB serial (ESP32-C3) ⇄ BLE ⇄ ESP32-S3
+Linux app ⇄ USB serial (router) ⇄ BLE ⇄ node
 ```
+
+Any common ESP32 variant (C3, S3, C5, …) can run either role. Role is determined by
+which firmware you flash, not which chip you use.
 
 ## Architecture
 
@@ -21,19 +24,31 @@ Klippylink/
 │   │   └── serial_transport.py
 │   ├── tests/
 │   └── pyproject.toml
-├── esp32-c3/            # ESP-IDF project — BLE central / serial bridge dongle
+├── router/              # ESP-IDF project — BLE central / WiFi bridge (any ESP32)
 │   ├── main/
-│   │   ├── main.c             # UART init + main loop
-│   │   ├── command_parser.c/h # Serial → packet parser
-│   │   └── ble_central.c/h    # BLE GATT client
+│   │   ├── main.c
+│   │   ├── ble_central.c/h
+│   │   ├── wifi_manager.c/h
+│   │   └── http_server.c/h
+│   ├── sdkconfig.defaults               # Role defaults (chip-agnostic)
+│   ├── sdkconfig.defaults.esp32c3       # C3-specific overrides
+│   ├── sdkconfig.defaults.esp32s3       # S3-specific overrides
+│   ├── sdkconfig.defaults.esp32c5       # C5-specific overrides
 │   └── CMakeLists.txt
-├── esp32-s3/            # ESP-IDF project — BLE peripheral / GATT server
+├── node/                # ESP-IDF project — BLE peripheral / GATT server (any ESP32)
 │   ├── main/
-│   │   ├── main.c             # Application entry
-│   │   └── gatt_server.c/h    # GATT server with command & telemetry chars
+│   │   ├── main.c
+│   │   ├── gatt_server.c/h
+│   │   ├── neopixel.c/h
+│   │   └── endstop.c/h
+│   ├── sdkconfig.defaults               # Role defaults (chip-agnostic)
+│   ├── sdkconfig.defaults.esp32c3       # C3-specific overrides
+│   ├── sdkconfig.defaults.esp32s3       # S3-specific overrides
+│   ├── sdkconfig.defaults.esp32c5       # C5-specific overrides
 │   └── CMakeLists.txt
+├── web-flasher/
+├── klipper-extension/
 ├── Scope/
-│   └── project_scope.md
 └── .gitignore
 ```
 
@@ -42,19 +57,23 @@ Klippylink/
 | Component | Technology |
 |---|---|
 | Linux host | Python + pyserial |
-| ESP32-C3 firmware | ESP-IDF (BLE central) |
-| ESP32-S3 firmware | ESP-IDF (GATT server) |
+| Router firmware | ESP-IDF (BLE central + WiFi) |
+| Node firmware | ESP-IDF (GATT server) |
 | Serial protocol | Custom binary (see `shared/protocol/`) |
 
 ## Building
 
-### ESP32-C3 / ESP32-S3
+### Router or Node (any supported ESP32 variant)
 
 ```bash
-cd esp32-c3   # or esp32-s3
+cd router   # or: cd node
+idf.py set-target esp32c3   # or esp32s3, esp32c5, …
 idf.py build
 idf.py -p /dev/ttyACM0 flash monitor
 ```
+
+`idf.py set-target` automatically merges the matching `sdkconfig.defaults.<target>` file
+(CPU frequency, etc.) on top of the role defaults.
 
 ### Linux Host
 
